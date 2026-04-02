@@ -8,7 +8,7 @@ import { useParams } from "react-router-dom";
 import { tableStyles } from "../styles";
 import AccessTimeIcon from "@mui/icons-material/AccessTime";
 import WarningIcon from "@mui/icons-material/Warning";
-import LogsCardView from "../components/logs/LogsCardView";
+// import LogsCardView from "../components/logs/LogsCardView";
 import { parseTimestampAsLocal } from "../utils/dateUtils";
 interface PaginationMeta {
     page: number;
@@ -277,16 +277,16 @@ export default function EquipamentoLogGrupoTable() {
             </Box>
 
             {/* Renderização condicional: Cards no mobile, Tabela no desktop */}
-            {isMobile ? (
-                <LogsCardView
-                    rows={rows}
-                    columns={columns}
-                    metrics={metrics}
-                    loading={loading}
-                    page={cardPage}
-                    totalPages={totalPages}
-                    onPageChange={handleCardPageChange}
-                />
+            {isMobile ? (<></>
+                // <LogsCardView
+                //     rows={rows}
+                //     columns={columns}
+                //     metrics={metrics}
+                //     loading={loading}
+                //     page={cardPage}
+                //     totalPages={totalPages}
+                //     onPageChange={handleCardPageChange}
+                // />
             ) : (
                     <DataGrid
                         rows={rows}
