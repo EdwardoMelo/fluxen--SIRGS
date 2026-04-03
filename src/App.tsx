@@ -11,6 +11,7 @@ import type { Usuario } from './types/Usuario';
 import { BrowserRouter as Router, useNavigate } from 'react-router-dom';
 import { Box, CircularProgress, Typography } from '@mui/material';
 import type { RootState } from './redux/store';
+import { SystemAnnouncementProvider } from './hooks/useSystemAnnouncement';
 
 // Componente interno que inicializa o estado do usuário
 const AppContent: React.FC = () => {
@@ -95,7 +96,9 @@ const App: React.FC = () => {
     <ThemeProvider theme={theme}>
       <Provider store={store}>
         <Router>
-          <AppContent />
+          <SystemAnnouncementProvider>
+            <AppContent />
+          </SystemAnnouncementProvider>
         </Router>
       </Provider>
     </ThemeProvider>

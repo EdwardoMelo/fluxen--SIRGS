@@ -1,8 +1,29 @@
-import { useState, useEffect, useCallback } from 'react';
+import React, {
+  createContext,
+  createElement,
+  useCallback,
+  useContext,
+  useEffect,
+  useMemo,
+  useState,
+} from 'react';
 import SystemAnnouncementService from '../services/systemAnnouncementService';
 import type { SystemAnnouncement } from '../types/SystemAnnouncement';
 
-export const useSystemAnnouncement = () => {
+type SystemAnnouncementContextValue = {
+  activeAnnouncement: SystemAnnouncement | null;
+  loading: boolean;
+  error: string | null;
+  isContingency: boolean;
+  hasActiveAnnouncement: boolean;
+  refetch: () => Promise<void>;
+};
+
+const SystemAnnouncementContext = createContext<SystemAnnouncementContextValue | null>(null);
+
+export const SystemAnnouncementProvider: React.FC<{ children: React.ReactNode }> = ({
+  children,
+}) => {
   const [activeAnnouncement, setActiveAnnouncement] = useState<SystemAnnouncement | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -23,22 +44,31 @@ export const useSystemAnnouncement = () => {
 
   useEffect(() => {
     fetchActiveAnnouncement();
-    
-    // Atualizar a cada 30 segundos
+
     const interval = setInterval(fetchActiveAnnouncement, 30000);
-    
+
     return () => clearInterval(interval);
   }, [fetchActiveAnnouncement]);
 
-  const isContingency = activeAnnouncement?.type === 'CONTINGENCY';
-  const hasActiveAnnouncement = activeAnnouncement !== null;
+  const value = useMemo<SystemAnnouncementContextValue>(
+    () => ({
+      activeAnnouncement,
+      loading,
+      error,
+      isContingency: activeAnnouncement?.type === 'CONTINGENCY',
+      hasActiveAnnouncement: activeAnnouncement !== null,
+      refetch: fetchActiveAnnouncement,
+    }),
+    [activeAnnouncement, loading, error, fetchActiveAnnouncement]
+  );
 
-  return {
-    activeAnnouncement,
-    loading,
-    error,
-    isContingency,
-    hasActiveAnnouncement,
-    refetch: fetchActiveAnnouncement,
-  };
+  return createElement(SystemAnnouncementContext.Provider, { value }, children);
+};
+
+export const useSystemAnnouncement = (): SystemAnnouncementContextValue => {
+  const ctx = useContext(SystemAnnouncementContext);
+  if (!ctx) {
+    throw new Error('useSystemAnnouncement must be used within SystemAnnouncementProvider');
+  }
+  return ctx;
 };
