@@ -1,6 +1,4 @@
-import { useState, useEffect, useCallback } from 'react';
-import { useParams } from 'react-router-dom';
-import EquipamentoLogService from '../services/equipamentoLogService';
+import { useMemo } from 'react';
 
 interface EquipamentoStatus {
   isOnline: boolean;
@@ -8,6 +6,33 @@ interface EquipamentoStatus {
   isRefreshing: boolean;
   currentLogCount: number;
 }
+
+/** `false` desativa polling e chamadas à API de logs só para status. Reative para voltar o monitoramento. */
+export const EQUIPAMENTO_STATUS_MONITORING_ENABLED = true;
+
+// const disabledStatus: EquipamentoStatus & {
+//   checkStatus: (isAutoRefresh?: boolean) => Promise<void>;
+// } = {
+//   isOnline: false,
+//   lastUpdate: null,
+//   isRefreshing: false,
+//   currentLogCount: 0,
+//   checkStatus: async () => {},
+// };
+
+// export const useEquipamentoStatus = () => {
+//   return useMemo(
+//     () => ({
+//       ...disabledStatus,
+//     }),
+//     []
+//   );
+// };
+
+
+import { useState, useEffect, useCallback } from 'react';
+import { useParams } from 'react-router-dom';
+import EquipamentoLogService from '../services/equipamentoLogService';
 
 export const useEquipamentoStatus = () => {
   const { id } = useParams();
@@ -34,11 +59,7 @@ export const useEquipamentoStatus = () => {
       setStatus(prev => {
         const previousLogCount = prev.currentLogCount;
 
-        // Se não há nenhum log, o equipamento deve estar offline
-        const isOnline = newLogCount === 0
-          ? false
-          // Se existem logs, considera online quando houver aumento de logs
-          : (previousLogCount === 0 ? true : newLogCount > previousLogCount);
+        const isOnline = newLogCount === 0 ? false : (previousLogCount === 0 ? true : newLogCount > previousLogCount);
 
         return {
           isOnline,
@@ -49,23 +70,19 @@ export const useEquipamentoStatus = () => {
       });
     } catch (error) {
       console.error('Erro ao verificar status do equipamento:', error);
-      setStatus(prev => ({ 
-        ...prev, 
+      setStatus(prev => ({
+        ...prev,
         isRefreshing: false,
-        isOnline: false 
+        isOnline: false
       }));
     }
   }, [id]);
 
   useEffect(() => {
-    // Verificação inicial
     checkStatus();
-
-    // Configurar verificação automática a cada 10 segundos
     const interval = setInterval(() => {
       checkStatus(true);
     }, 10000);
-
     return () => {
       clearInterval(interval);
     };

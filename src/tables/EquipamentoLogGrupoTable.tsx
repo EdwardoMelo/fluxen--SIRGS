@@ -1,15 +1,32 @@
-import { Box, Typography, Chip, Alert, Tooltip, useMediaQuery, useTheme } from "@mui/material";
+import { Box, Typography, Chip, Alert, Tooltip, useMediaQuery, useTheme, CircularProgress } from "@mui/material";
 import { DataGrid, type GridColDef, type GridRenderCellParams, type GridPaginationModel } from "@mui/x-data-grid";
 import { useDispatch } from "react-redux";
 import { setFeedback } from "../redux/slices/feedBackSlice";
 import EquipamentoLogService from "../services/equipamentoLogService";
-import { useCallback, useEffect, useRef, useState } from "react";
-import { useParams } from "react-router-dom";
+import { memo, useCallback, useEffect, useRef, useState } from "react";
 import { tableStyles } from "../styles";
 import AccessTimeIcon from "@mui/icons-material/AccessTime";
 import WarningIcon from "@mui/icons-material/Warning";
 // import LogsCardView from "../components/logs/LogsCardView";
 import { parseTimestampAsLocal } from "../utils/dateUtils";
+
+/** `false` desativa o polling incremental (afterGroupId) a cada 10s. */
+const EQUIPAMENTO_LOG_GRUPO_AUTO_REFRESH_ENABLED = true;
+const AUTO_REFRESH_INTERVAL_MS = 10_000;
+
+/** Junta linhas novas (ids inexistentes) e ordena por timestamp desc; desempate por id. */
+function mergeNewerLogRows(current: any[], incoming: any[]): any[] {
+    const existingIds = new Set(current.map((r) => r.id));
+    const toAdd = incoming.filter((r) => !existingIds.has(r.id));
+    if (!toAdd.length) return current;
+    return [...toAdd, ...current].sort((a, b) => {
+        const tb = new Date(b.timestamp).getTime();
+        const ta = new Date(a.timestamp).getTime();
+        if (tb !== ta) return tb - ta;
+        return (b.id ?? 0) - (a.id ?? 0);
+    });
+}
+
 interface PaginationMeta {
     page: number;
     pageSize: number;
@@ -25,24 +42,32 @@ interface TableData {
     pagination?: PaginationMeta;
 }
 
-export default function EquipamentoLogGrupoTable() {
+export interface EquipamentoLogGrupoTableProps {
+    /** Id do equipamento na rota — vem do pai para permitir React.memo estável. */
+    equipamentoId: string;
+}
+
+function EquipamentoLogGrupoTable({ equipamentoId }: EquipamentoLogGrupoTableProps) {
     const dispatch = useDispatch();
-    const { id } = useParams();
     const theme = useTheme();
     const isMobile = useMediaQuery(theme.breakpoints.down('md'));
 
     const [columns, setColumns] = useState<GridColDef[]>([]);
     const [rows, setRows] = useState<any[]>([]);
-    const [loading, setLoading] = useState(false);
+    /** Só o primeiro carregamento (ou após trocar `id`); paginação não usa overlay. */
+    const [initialLoading, setInitialLoading] = useState(true);
+    const hasCompletedInitialLoadRef = useRef(false);
+    /** Id do grupo mais recente já conhecido (cursor para `afterGroupId` no backend). Só confiável na página 0. */
+    const lastNewestGroupIdRef = useRef<number | null>(null);
     const [isAutoRefreshing, setIsAutoRefreshing] = useState(false);
     const [situation, setSituation] = useState<'working' | 'frozen' | null>(null);
     const [rowCount, setRowCount] = useState(0);
     const [metrics, setMetrics] = useState<any[]>([]);
 
-    // Paginação: 10 itens no mobile, 50 no desktop
+    // Paginação: padrão 10; opções 10 / 20 / 30
     const [paginationModel, setPaginationModel] = useState<GridPaginationModel>({
         page: 0,
-        pageSize: isMobile ? 10 : 50
+        pageSize: 10
     });
     const [cardPage, setCardPage] = useState(1);
     const [totalPages, setTotalPages] = useState(0);
@@ -51,6 +76,12 @@ export default function EquipamentoLogGrupoTable() {
     useEffect(() => {
         paginationModelRef.current = paginationModel;
     }, [paginationModel]);
+
+    useEffect(() => {
+        hasCompletedInitialLoadRef.current = false;
+        lastNewestGroupIdRef.current = null;
+        setInitialLoading(true);
+    }, [equipamentoId]);
 
     // Componente para renderizar célula com alerta
     const MetricCell = (params: GridRenderCellParams) => {
@@ -90,18 +121,17 @@ export default function EquipamentoLogGrupoTable() {
     };
 
 
-    const fetchTableData = useCallback(async (model?: GridPaginationModel, isAutoRefresh = false) => {
-        if (!id) return;
+    const fetchTableData = useCallback(async (model?: GridPaginationModel) => {
+        if (!equipamentoId) {
+            setInitialLoading(false);
+            return;
+        }
 
         const currentPagination = model ?? paginationModelRef.current;
+        const isInitialLoad = !hasCompletedInitialLoadRef.current;
 
-        if (isAutoRefresh) {
-            setIsAutoRefreshing(true);
-        } else {
-            setLoading(true);
-        }
         try {
-            const tableData: TableData = await EquipamentoLogService.getLogsTableData(Number(id), {
+            const tableData: TableData = await EquipamentoLogService.getLogsTableData(Number(equipamentoId), {
                 page: currentPagination.page + 1,
                 pageSize: currentPagination.pageSize
             });
@@ -142,6 +172,11 @@ export default function EquipamentoLogGrupoTable() {
             setMetrics(tableData.metrics || []);
             setRowCount(tableData.pagination?.totalItems ?? tableData.rows?.length ?? 0);
 
+            if (currentPagination.page === 0) {
+                const first = tableData.rows?.[0];
+                lastNewestGroupIdRef.current = typeof first?.id === "number" ? first.id : null;
+            }
+
             if (tableData.pagination) {
                 setTotalPages(tableData.pagination.totalPages);
                 const serverModel: GridPaginationModel = {
@@ -165,44 +200,67 @@ export default function EquipamentoLogGrupoTable() {
                 })
             );
         } finally {
-            if (isAutoRefresh) {
-                setIsAutoRefreshing(false);
-            } else {
-                setLoading(false);
+            if (isInitialLoad) {
+                setInitialLoading(false);
+                hasCompletedInitialLoadRef.current = true;
             }
         }
-    }, [id, dispatch]);
+    }, [equipamentoId, dispatch]);
 
-    // Ajustar pageSize quando mudar de mobile para desktop ou vice-versa
-    useEffect(() => {
-        const newPageSize = isMobile ? 10 : 50;
-        if (paginationModel.pageSize !== newPageSize) {
-            const newModel: GridPaginationModel = {
-                page: 0,
-                pageSize: newPageSize
-            };
-            setPaginationModel(newModel);
-            setCardPage(1);
-            // Recarregar dados com novo pageSize
-            fetchTableData(newModel);
+    const fetchIncrementalNewer = useCallback(async () => {
+        if (!equipamentoId) return;
+        if (paginationModelRef.current.page !== 0) return;
+
+        const newestId = lastNewestGroupIdRef.current;
+        if (newestId == null) return;
+
+        setIsAutoRefreshing(true);
+        try {
+            const tableData: TableData = await EquipamentoLogService.getLogsTableData(Number(equipamentoId), {
+                afterGroupId: newestId,
+                pageSize: paginationModelRef.current.pageSize,
+            });
+            const incoming = tableData.rows || [];
+            if (incoming.length === 0) {
+                return;
+            }
+
+            setRows((prev) => {
+                const merged = mergeNewerLogRows(prev, incoming);
+                lastNewestGroupIdRef.current = merged[0]?.id ?? lastNewestGroupIdRef.current;
+                const pageSize = paginationModelRef.current.pageSize;
+                return merged.slice(0, pageSize);
+            });
+            setSituation(tableData.situation ?? null);
+            if (tableData.pagination?.totalItems != null) {
+                setRowCount(tableData.pagination.totalItems);
+            }
+        } catch (error: any) {
+            dispatch(
+                setFeedback({
+                    message: `Erro ao buscar registros novos: ${error?.message ?? error}`,
+                    type: "error",
+                })
+            );
+        } finally {
+            setIsAutoRefreshing(false);
         }
-        // eslint-disable-next-line react-hooks/exhaustive-deps
-    }, [isMobile]);
+    }, [equipamentoId, dispatch]);
 
     useEffect(() => {
-        // Fetch inicial
         fetchTableData();
 
-        // Configurar fetch automático a cada 10 segundos
-        const interval = setInterval(() => {
-            fetchTableData(undefined, true); // true indica que é um refresh automático
-        }, 10000); // 10 segundos
+        if (!EQUIPAMENTO_LOG_GRUPO_AUTO_REFRESH_ENABLED) {
+            return;
+        }
 
-        // Cleanup: limpar o interval quando o componente for desmontado
+        const interval = setInterval(() => {
+            void fetchIncrementalNewer();
+        }, AUTO_REFRESH_INTERVAL_MS);
         return () => {
             clearInterval(interval);
         };
-    }, [fetchTableData]);
+    }, [fetchTableData, fetchIncrementalNewer]);
 
     // Handler para mudança de página nos cards
     const handleCardPageChange = useCallback((newPage: number) => {
@@ -242,58 +300,68 @@ export default function EquipamentoLogGrupoTable() {
                 </Alert>
             )}
 
-            {/* Indicador de atualização automática */}
-            <Box
-                sx={{
-                    display: "flex",
-                    alignItems: "center",
-                    gap: 1,
-                    mb: 1,
-                    flexWrap: isMobile ? 'wrap' : 'nowrap',
-                }}
-            >
-                <Chip
-                    icon={<AccessTimeIcon />}
-                    label={isMobile ? "Auto: 10s" : "Atualização automática a cada 10s"}
-                    variant="outlined"
-                    size={isMobile ? "small" : "medium"}
-                    color="primary"
+            {/* Indicador de auto-refresh — só com EQUIPAMENTO_LOG_GRUPO_AUTO_REFRESH_ENABLED */}
+            {EQUIPAMENTO_LOG_GRUPO_AUTO_REFRESH_ENABLED && (
+                <Box
                     sx={{
-                        fontSize: isMobile ? '0.75rem' : '0.875rem',
+                        display: "flex",
+                        alignItems: "center",
+                        gap: 1,
+                        mb: 1,
+                        flexWrap: isMobile ? 'wrap' : 'nowrap',
                     }}
-                />
-                {isAutoRefreshing && (
-                    <Typography
-                        variant="caption"
+                >
+                    <Chip
+                        icon={<AccessTimeIcon />}
+                        label={
+                            isMobile
+                                ? "Novos: 10s"
+                                : "Novos registros a cada 10s"
+                        }
+                        variant="outlined"
+                        size={isMobile ? "small" : "medium"}
                         color="primary"
                         sx={{
-                            fontStyle: "italic",
-                            fontSize: isMobile ? '0.7rem' : '0.75rem',
+                            fontSize: isMobile ? '0.75rem' : '0.875rem',
                         }}
-                    >
-                        Atualizando...
-                    </Typography>
-                )}
-            </Box>
+                    />
+                    {isAutoRefreshing && (
+                        <Typography
+                            variant="caption"
+                            color="primary"
+                            sx={{
+                                fontStyle: "italic",
+                                fontSize: isMobile ? '0.7rem' : '0.75rem',
+                            }}
+                        >
+                            Atualizando...
+                        </Typography>
+                    )}
+                </Box>
+            )}
 
-            {/* Renderização condicional: Cards no mobile, Tabela no desktop */}
-            {isMobile ? (<></>
-                // <LogsCardView
-                //     rows={rows}
-                //     columns={columns}
-                //     metrics={metrics}
-                //     loading={loading}
-                //     page={cardPage}
-                //     totalPages={totalPages}
-                //     onPageChange={handleCardPageChange}
-                // />
+            {/* Carregamento inicial: mesmo CircularProgress no mobile e desktop */}
+            {initialLoading ? (
+                <Box
+                    sx={{
+                        display: "flex",
+                        justifyContent: "center",
+                        alignItems: "center",
+                        minHeight: isMobile ? 280 : 360,
+                        width: "100%",
+                    }}
+                >
+                    <CircularProgress />
+                </Box>
+            ) : isMobile ? (
+                <></>
             ) : (
                     <DataGrid
                         rows={rows}
                         columns={columns}
                         rowHeight={40}
                         sx={tableStyles}
-                        loading={loading}
+                        loading={false}
                         getRowId={(row) => row.id}
                         paginationMode="server"
                         paginationModel={paginationModel}
@@ -303,7 +371,7 @@ export default function EquipamentoLogGrupoTable() {
                         }}
                         rowCount={rowCount}
                         checkboxSelection={false}
-                        pageSizeOptions={[25, 50, 100]}
+                        pageSizeOptions={[10, 20, 30]}
                         disableRowSelectionOnClick
                         hideFooter={false}
                         autoHeight={false}
@@ -316,3 +384,9 @@ export default function EquipamentoLogGrupoTable() {
         </Box>
     );
 }
+
+export default memo(EquipamentoLogGrupoTable);
+
+/*
+ * ─── Safe-delete: polling antigo (refetch completo a cada 10s). Hoje: fetchIncrementalNewer + afterGroupId. ───
+ */

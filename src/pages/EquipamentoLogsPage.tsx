@@ -3,28 +3,25 @@ import { useNavigate, useParams } from "react-router-dom";
 import ArrowBackIcon from "@mui/icons-material/ArrowBack";
 import FileDownloadIcon from "@mui/icons-material/FileDownload";
 import EquipamentoLogGrupoTable from "../tables/EquipamentoLogGrupoTable";
-import OnlineStatusCard from "../components/shared/OnlineStatusCard";
+import EquipamentoLogsStatusSection from "../components/equipamento/EquipamentoLogsStatusSection";
 import ExportReportDialog from "../components/reports/ExportReportDialog";
-import { useEquipamentoStatus } from "../hooks/useEquipamentoStatus";
-import { useState, useEffect } from "react";
-import EquipamentoService from "../services/equipamentoService";
+import { useEffect, useState } from "react";
 import type { Equipamento } from "../types/Equipamento";
 import { useDispatch, useSelector } from "react-redux";
-import { setFeedback } from "../redux/slices/feedBackSlice";
 import type { RootState } from "../redux/store";
+import EquipamentoService from "../services/equipamentoService";
+import { setFeedback } from "../redux/slices/feedBackSlice";
 
 const EquipamentoLogsPage = () => {
   const navigate = useNavigate();
-  const dispatch = useDispatch();
   const { id } = useParams();
-  const { isOnline, lastUpdate, isRefreshing } = useEquipamentoStatus();
+  const dispatch = useDispatch();
   const theme = useTheme();
   const isMobile = useMediaQuery(theme.breakpoints.down('md'));
   const { sideMenuWidth } = useSelector((state: RootState) => state.sideMenu);
   const [equipamento, setEquipamento] = useState<Equipamento | null>(null);
   const [exportDialogOpen, setExportDialogOpen] = useState(false);
 
-  // Buscar dados do equipamento
   useEffect(() => {
     const fetchEquipamento = async () => {
       if (id) {
@@ -124,14 +121,7 @@ const EquipamentoLogsPage = () => {
           </Stack>
         </Box>
 
-        {/* Status Card */}
-        <Box sx={{ mb: isMobile ? 2 : 3 }}>
-          <OnlineStatusCard
-            isOnline={isOnline}
-            lastUpdate={lastUpdate}
-            isRefreshing={isRefreshing}
-          />
-        </Box>
+        <EquipamentoLogsStatusSection />
 
         {/* Tabela/Cards de Logs */}
         <Box
@@ -145,7 +135,7 @@ const EquipamentoLogsPage = () => {
             boxSizing: "border-box",
           }}
         >
-          <EquipamentoLogGrupoTable />
+          {id ? <EquipamentoLogGrupoTable equipamentoId={id} /> : null}
         </Box>
       </Box>
 

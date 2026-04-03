@@ -3,6 +3,8 @@ import api from '../api';
 interface LogsTableParams {
   page?: number;
   pageSize?: number;
+  /** Só grupos com id maior que este (refresh incremental). */
+  afterGroupId?: number;
 }
 
 class EquipamentoLogService {
