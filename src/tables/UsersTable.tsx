@@ -24,6 +24,7 @@ export default function UsersTable() {
   const {user} = useSelector((state: RootState) => state.user);
   const {columns } = useUserColumns();
   const {rows, filters, creatingUser, editingUser, deletingUser} = useSelector((state: RootState) => state.usersTable);
+  const [loading, setLoading] = useState(true);
 
   // Paginação para mobile
   const [cardPage, setCardPage] = useState(1);
@@ -63,14 +64,18 @@ export default function UsersTable() {
   }
 
   const fetchUsers = useCallback( async () => { 
-    try{  
-        if(!user) return;
-
+    if (!user) {
+      setLoading(false);
+      return;
+    }
+    setLoading(true);
+    try {
         const users = await UsuarioService.getUsuarios(user, filters);
-        
         dispatch(setRows(users));
-    }catch(e: any){ 
+    } catch(e: any) { 
       dispatch(setFeedback({ message: `Erro ao buscar usuários: ${e}`, type: 'error'}));
+    } finally {
+      setLoading(false);
     }
   }, [dispatch, filters, user]);
 
@@ -132,6 +137,7 @@ export default function UsersTable() {
           columns={columns}
           rowHeight={32}
           sx={tableStyles}
+          loading={loading}
           initialState={{
             pagination: {
               paginationModel: {

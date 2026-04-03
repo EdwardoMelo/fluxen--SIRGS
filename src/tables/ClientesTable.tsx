@@ -21,6 +21,7 @@ const ClientesTable = () => {
   const { user } = useSelector((state: RootState) => state.user);
   const { rows, filters, creatingCliente, editingCliente, deletingCliente } = useSelector((state: RootState) => state.clientesTable);
   const { columns } = useClientColumns();
+  const [loading, setLoading] = useState(true);
 
   // Paginação para mobile
   const [cardPage, setCardPage] = useState(1);
@@ -54,12 +55,18 @@ const ClientesTable = () => {
   };
 
   const fetchClientes = useCallback(async () => {
+    if (!user) {
+      setLoading(false);
+      return;
+    }
+    setLoading(true);
     try {
-      if (!user) return;
       const clientes = await ClienteService.getClientes(user, filters);
       dispatch(setRows(clientes));
     } catch (e: any) {
       dispatch(setFeedback({ message: `Erro ao buscar clientes: ${e}`, type: "error" }));
+    } finally {
+      setLoading(false);
     }
   }, [dispatch, filters, user]);
 
@@ -107,6 +114,7 @@ const ClientesTable = () => {
           columns={columns}
           rowHeight={32}
           sx={tableStyles}
+          loading={loading}
           initialState={{
             pagination: {
               paginationModel: {

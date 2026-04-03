@@ -27,6 +27,7 @@ export default function EquipamentosTable() {
   const {columns } = useEquipamentoColumns();
   const {rows, filters, creatingEquipamento, editingEquipamento, deletingEquipamento} = useSelector((state: RootState) => state.equipamentosTable);
   const { clientOptions } = useClientOptions();
+  const [loading, setLoading] = useState(true);
   
   console.log("EquipamentosTable - clientOptions:", clientOptions);
   console.log("EquipamentosTable - clientOptions.length:", clientOptions.length);
@@ -91,16 +92,18 @@ export default function EquipamentosTable() {
   };
 
   const fetchEquipments = useCallback( async () => { 
-    console.log("fetchEquipments")
-    try{  
-      console.log("user", user)
-        if(!user) return;
-     
+    if (!user) {
+      setLoading(false);
+      return;
+    }
+    setLoading(true);
+    try {
         const equips = await EquipamentoService.getEquipamentos(user, filters);
-        
         dispatch(setRows(equips));
-    }catch(e: any){ 
+    } catch(e: any) { 
       dispatch(setFeedback({ message: `Erro ao buscar equipamentos: ${e}`, type: 'error'}));
+    } finally {
+      setLoading(false);
     }
   }, [dispatch, filters, user]);
 
@@ -166,6 +169,7 @@ export default function EquipamentosTable() {
           columns={columns}
           rowHeight={32}
           sx={tableStyles}
+          loading={loading}
           initialState={{
             pagination: {
               paginationModel: {

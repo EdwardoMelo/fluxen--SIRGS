@@ -7,7 +7,6 @@ import { memo, useCallback, useEffect, useRef, useState } from "react";
 import { tableStyles } from "../styles";
 import AccessTimeIcon from "@mui/icons-material/AccessTime";
 import WarningIcon from "@mui/icons-material/Warning";
-// import LogsCardView from "../components/logs/LogsCardView";
 import { parseTimestampAsLocal } from "../utils/dateUtils";
 
 /** `false` desativa o polling incremental (afterGroupId) a cada 10s. */
@@ -38,7 +37,6 @@ interface TableData {
     columns: GridColDef[];
     rows: any[];
     situation?: 'working' | 'frozen';
-    metrics: any[];
     pagination?: PaginationMeta;
 }
 
@@ -62,15 +60,12 @@ function EquipamentoLogGrupoTable({ equipamentoId }: EquipamentoLogGrupoTablePro
     const [isAutoRefreshing, setIsAutoRefreshing] = useState(false);
     const [situation, setSituation] = useState<'working' | 'frozen' | null>(null);
     const [rowCount, setRowCount] = useState(0);
-    const [metrics, setMetrics] = useState<any[]>([]);
 
     // Paginação: padrão 10; opções 10 / 20 / 30
     const [paginationModel, setPaginationModel] = useState<GridPaginationModel>({
         page: 0,
         pageSize: 10
     });
-    const [cardPage, setCardPage] = useState(1);
-    const [totalPages, setTotalPages] = useState(0);
     const paginationModelRef = useRef<GridPaginationModel>(paginationModel);
 
     useEffect(() => {
@@ -169,7 +164,6 @@ function EquipamentoLogGrupoTable({ equipamentoId }: EquipamentoLogGrupoTablePro
             setColumns(formattedColumns);
             setRows(tableData.rows || []);
             setSituation(tableData.situation ?? null);
-            setMetrics(tableData.metrics || []);
             setRowCount(tableData.pagination?.totalItems ?? tableData.rows?.length ?? 0);
 
             if (currentPagination.page === 0) {
@@ -178,7 +172,6 @@ function EquipamentoLogGrupoTable({ equipamentoId }: EquipamentoLogGrupoTablePro
             }
 
             if (tableData.pagination) {
-                setTotalPages(tableData.pagination.totalPages);
                 const serverModel: GridPaginationModel = {
                     page: Math.max(tableData.pagination.page - 1, 0),
                     pageSize: tableData.pagination.pageSize
@@ -189,7 +182,6 @@ function EquipamentoLogGrupoTable({ equipamentoId }: EquipamentoLogGrupoTablePro
                     serverModel.pageSize !== paginationModel.pageSize
                 ) {
                     setPaginationModel(serverModel);
-                    setCardPage(tableData.pagination.page);
                 }
             }
         } catch (error: any) {
@@ -261,17 +253,6 @@ function EquipamentoLogGrupoTable({ equipamentoId }: EquipamentoLogGrupoTablePro
             clearInterval(interval);
         };
     }, [fetchTableData, fetchIncrementalNewer]);
-
-    // Handler para mudança de página nos cards
-    const handleCardPageChange = useCallback((newPage: number) => {
-        setCardPage(newPage);
-        const newPaginationModel: GridPaginationModel = {
-            page: newPage - 1,
-            pageSize: paginationModel.pageSize
-        };
-        setPaginationModel(newPaginationModel);
-        fetchTableData(newPaginationModel);
-    }, [paginationModel.pageSize]);
 
     return (
         <Box
@@ -386,7 +367,3 @@ function EquipamentoLogGrupoTable({ equipamentoId }: EquipamentoLogGrupoTablePro
 }
 
 export default memo(EquipamentoLogGrupoTable);
-
-/*
- * ─── Safe-delete: polling antigo (refetch completo a cada 10s). Hoje: fetchIncrementalNewer + afterGroupId. ───
- */

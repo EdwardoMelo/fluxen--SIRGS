@@ -1,4 +1,6 @@
-import { useMemo } from 'react';
+import { useState, useEffect, useCallback } from 'react';
+import { useParams } from 'react-router-dom';
+import EquipamentoLogService from '../services/equipamentoLogService';
 
 interface EquipamentoStatus {
   isOnline: boolean;
@@ -9,30 +11,6 @@ interface EquipamentoStatus {
 
 /** `false` desativa polling e chamadas à API de logs só para status. Reative para voltar o monitoramento. */
 export const EQUIPAMENTO_STATUS_MONITORING_ENABLED = true;
-
-// const disabledStatus: EquipamentoStatus & {
-//   checkStatus: (isAutoRefresh?: boolean) => Promise<void>;
-// } = {
-//   isOnline: false,
-//   lastUpdate: null,
-//   isRefreshing: false,
-//   currentLogCount: 0,
-//   checkStatus: async () => {},
-// };
-
-// export const useEquipamentoStatus = () => {
-//   return useMemo(
-//     () => ({
-//       ...disabledStatus,
-//     }),
-//     []
-//   );
-// };
-
-
-import { useState, useEffect, useCallback } from 'react';
-import { useParams } from 'react-router-dom';
-import EquipamentoLogService from '../services/equipamentoLogService';
 
 export const useEquipamentoStatus = () => {
   const { id } = useParams();

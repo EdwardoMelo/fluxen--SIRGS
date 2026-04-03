@@ -4,7 +4,7 @@ import { useDispatch, useSelector } from "react-redux";
 import type { RootState } from "../redux/store";
 import MetricaService from "../services/metricaService";
 import { setFeedback } from "../redux/slices/feedBackSlice";
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { Box, Dialog, DialogContent, DialogTitle, Stack, useMediaQuery, useTheme } from "@mui/material";
 import { DataGrid } from "@mui/x-data-grid";
 import { tableStyles } from "../styles";
@@ -20,6 +20,7 @@ const MetricasTable = () => {
   const isMobile = useMediaQuery(theme.breakpoints.down('md'));
   const { rows, filters, creatingMetrica, editingMetrica, deletingMetrica } = useSelector((state: RootState) => state.metricasTable);
   const { columns } = useMetricaColumns();
+  const [loading, setLoading] = useState(true);
 
   // Paginação para mobile
   const [cardPage, setCardPage] = useState(1);
@@ -39,7 +40,7 @@ const MetricasTable = () => {
   };
 
   const handleDeleteMetrica = async  (id: number) => {
-    try{  
+    try{
       await MetricaService.deleteMetrica(id);
       dispatch(removeMetrica(id));
       dispatch(setDeletingMetrica(null));
@@ -51,23 +52,23 @@ const MetricasTable = () => {
     }
   }
 
-
-
-  const fetchMetrics = async () => {
+  const fetchMetrics = useCallback(async () => {
+    setLoading(true);
     try {
       const metrics = await MetricaService.getMetricas(filters);
       dispatch(setRows(metrics));
     } catch (e: any) {
       dispatch(
-        setFeedback({ message: `Erro ao buscar meticas: ${e}`, type: 'error' })
+        setFeedback({ message: `Erro ao buscar meticas: ${e}`, type: "error" })
       );
+    } finally {
+      setLoading(false);
     }
-  };
-
+  }, [dispatch, filters]);
 
   useEffect(() => {
     fetchMetrics();
-  }, [filters]);
+  }, [fetchMetrics]);
 
   // Resetar página quando os filtros mudarem
   useEffect(() => {
@@ -94,8 +95,8 @@ const MetricasTable = () => {
         gap: isMobile ? 1 : 0.5,
       }}
     >
-      <Stack 
-        direction={isMobile ? "column" : "row"} 
+      <Stack
+        direction={isMobile ? "column" : "row"}
         justifyContent="space-between"
         gap={isMobile ? 1 : 0}
         sx={{
@@ -126,6 +127,7 @@ const MetricasTable = () => {
           columns={columns}
           rowHeight={32}
           sx={tableStyles}
+          loading={loading}
           initialState={{
             pagination: {
               paginationModel: {
@@ -139,7 +141,7 @@ const MetricasTable = () => {
           hideFooter={false}
         />
       )}
-     
+
 
       <Dialog open={creatingMetrica || editingMetrica !== null}>
         <DialogTitle>

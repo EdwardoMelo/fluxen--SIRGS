@@ -6,11 +6,6 @@ import {
   IconButton,
   Badge,
   Drawer,
-  List,
-  ListItem,
-  ListItemText,
-  Divider,
-  Chip,
   Tooltip,
 } from "@mui/material";
 import SettingsIcon from "@mui/icons-material/Settings";
@@ -31,6 +26,7 @@ import type { UsuarioEquipamentoDashboard } from "../types/UsuarioEquipamentoDas
 import type { Notificacao } from "../types/Notificacao";
 import type { ChartData } from "../types/Chart";
 import type { DashboardChartBundleResponse } from "../types/DashboardChartBundle";
+import NotificacoesVirtualList from "./notificacoes/NotificacoesVirtualList";
 
 /** Intervalo para GET chart-bundle em background (substitui o poll por card) */
 const DASHBOARD_BUNDLE_REFRESH_MS = 30_000;
@@ -257,10 +253,24 @@ const Dashboard = () => {
         open={notificacoesDrawerOpen}
         onClose={() => setNotificacoesDrawerOpen(false)}
         PaperProps={{
-          sx: { width: { xs: '100%', sm: 400 } }
+          sx: {
+            width: { xs: '100%', sm: 400 },
+            display: 'flex',
+            flexDirection: 'column',
+            height: '100%',
+          },
         }}
       >
-        <Box sx={{ p: 2, display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderBottom: '1px solid rgba(0,0,0,0.1)' }}>
+        <Box
+          sx={{
+            p: 2,
+            display: 'flex',
+            justifyContent: 'space-between',
+            alignItems: 'center',
+            borderBottom: '1px solid rgba(0,0,0,0.1)',
+            flexShrink: 0,
+          }}
+        >
           <Typography variant="h6" fontWeight="bold">
             Notificações
           </Typography>
@@ -279,7 +289,15 @@ const Dashboard = () => {
             </IconButton>
           </Box>
         </Box>
-        <Box sx={{ overflow: 'auto', flex: 1 }}>
+        <Box
+          sx={{
+            flex: 1,
+            minHeight: 0,
+            display: 'flex',
+            flexDirection: 'column',
+            overflow: 'hidden',
+          }}
+        >
           {loadingNotificacoes ? (
             <Box sx={{ display: 'flex', justifyContent: 'center', p: 3 }}>
               <CircularProgress size={24} />
@@ -291,51 +309,10 @@ const Dashboard = () => {
               </Typography>
             </Box>
           ) : (
-            <List>
-              {notificacoes.map((notificacao, index) => (
-                <Box key={notificacao.id}>
-                  <ListItem
-                    sx={{
-                      bgcolor: notificacao.visualizado ? 'transparent' : 'action.hover',
-                      flexDirection: 'column',
-                      alignItems: 'flex-start',
-                      py: 2
-                    }}
-                  >
-                    <Box sx={{ width: '100%', display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', mb: 1 }}>
-                      <Chip
-                        label={notificacao.visualizado ? 'Visualizada' : 'Nova'}
-                        size="small"
-                        color={notificacao.visualizado ? 'default' : 'error'}
-                        sx={{ fontSize: '0.7rem' }}
-                      />
-                      {!notificacao.visualizado && (
-                        <Button
-                          size="small"
-                          onClick={() => handleMarkAsRead(notificacao.id)}
-                        >
-                          Marcar como lida
-                        </Button>
-                      )}
-                    </Box>
-                    <ListItemText
-                      primary={notificacao.descricao}
-                      secondary={notificacao.created_at ? new Date(notificacao.created_at).toLocaleString('pt-BR') : ''}
-                      primaryTypographyProps={{
-                        sx: {
-                          fontSize: '0.9rem',
-                          fontWeight: notificacao.visualizado ? 400 : 600
-                        }
-                      }}
-                      secondaryTypographyProps={{
-                        sx: { fontSize: '0.75rem', mt: 0.5 }
-                      }}
-                    />
-                  </ListItem>
-                  {index < notificacoes.length - 1 && <Divider />}
-                </Box>
-              ))}
-            </List>
+            <NotificacoesVirtualList
+              notificacoes={notificacoes}
+              onMarkAsRead={handleMarkAsRead}
+            />
           )}
         </Box>
       </Drawer>
