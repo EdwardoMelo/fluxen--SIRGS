@@ -29,12 +29,21 @@ import { useSystemAnnouncement } from "../hooks/useSystemAnnouncement";
 import SystemAnnouncementCard from "./SystemAnnouncementCard";
 import type { UsuarioEquipamentoDashboard } from "../types/UsuarioEquipamentoDashboard";
 import type { Notificacao } from "../types/Notificacao";
+import type { ChartData } from "../types/Chart";
+import type { DashboardChartBundleResponse } from "../types/DashboardChartBundle";
+
+/** Intervalo para GET chart-bundle em background (substitui o poll por card) */
+const DASHBOARD_BUNDLE_REFRESH_MS = 30_000;
 
 const Dashboard = () => {
   const { sideMenuWidth } = useSelector((state: RootState) => state.sideMenu);
   const { user } = useSelector((state: RootState) => state.user);
 
   const [dashboardEquipamentos, setDashboardEquipamentos] = useState<UsuarioEquipamentoDashboard[]>([]);
+  const [chartBundleByItemId, setChartBundleByItemId] = useState<
+    Record<number, { chartData: ChartData | null; error?: string | null }>
+  >({});
+  const [chartBundleVersion, setChartBundleVersion] = useState(0);
   const [loadingEquipamentos, setLoadingEquipamentos] = useState(false);
   const [selectorOpen, setSelectorOpen] = useState(false);
   const [notificacoesDrawerOpen, setNotificacoesDrawerOpen] = useState(false);
@@ -43,20 +52,41 @@ const Dashboard = () => {
   const [loadingNotificacoes, setLoadingNotificacoes] = useState(false);
   const { activeAnnouncement, isContingency } = useSystemAnnouncement();
 
-  // Carregar equipamentos do dashboard
+  const applyChartBundle = useCallback((bundle: DashboardChartBundleResponse) => {
+    setDashboardEquipamentos(bundle.items);
+    const map: Record<number, { chartData: ChartData | null; error?: string | null }> = {};
+    for (const c of bundle.charts) {
+      map[c.dashboardItemId] = { chartData: c.chartData, error: c.error };
+    }
+    setChartBundleByItemId(map);
+    setChartBundleVersion((v) => v + 1);
+  }, []);
+
+  /** Carga inicial / após gerenciar equipamentos — exibe loader do dashboard */
   const fetchDashboardEquipamentos = useCallback(async () => {
     if (!user?.id) return;
 
     setLoadingEquipamentos(true);
     try {
-      const dashboardItems = await UsuarioEquipamentoDashboardService.getEquipamentosDashboard(user.id);
-      setDashboardEquipamentos(dashboardItems);
+      const bundle = await UsuarioEquipamentoDashboardService.getDashboardBundle(user.id);
+      applyChartBundle(bundle);
     } catch (error) {
       console.error('Error fetching dashboard equipamentos:', error);
     } finally {
       setLoadingEquipamentos(false);
     }
-  }, [user?.id]);
+  }, [user?.id, applyChartBundle]);
+
+  /** Atualização periódica: mesmo bundle, sem loader (dados já estão na UI) */
+  const refreshDashboardBundleSilently = useCallback(async () => {
+    if (!user?.id) return;
+    try {
+      const bundle = await UsuarioEquipamentoDashboardService.getDashboardBundle(user.id);
+      applyChartBundle(bundle);
+    } catch (error) {
+      console.error('Silent dashboard bundle refresh failed:', error);
+    }
+  }, [user?.id, applyChartBundle]);
 
   // Buscar notificações a cada 1 minuto
   useEffect(() => {
@@ -90,6 +120,17 @@ const Dashboard = () => {
   useEffect(() => {
     fetchDashboardEquipamentos();
   }, [fetchDashboardEquipamentos]);
+
+  useEffect(() => {
+    if (!user?.id) return;
+    if (dashboardEquipamentos.length === 0) return;
+
+    const id = window.setInterval(() => {
+      void refreshDashboardBundleSilently();
+    }, DASHBOARD_BUNDLE_REFRESH_MS);
+
+    return () => clearInterval(id);
+  }, [user?.id, dashboardEquipamentos.length, refreshDashboardBundleSilently]);
 
 
   const handleMarkAsRead = async (id: number) => {
@@ -411,7 +452,8 @@ const Dashboard = () => {
                         initialMetricId={dashboardItem.id_metrica || undefined}
                         dashboardItemId={dashboardItem.id}
                         initialTipoGraficoId={dashboardItem.id_tipo_grafico || undefined}
-                        onTipoGraficoChange={fetchDashboardEquipamentos}
+                        prefetchedChart={chartBundleByItemId[dashboardItem.id] ?? null}
+                        bundleVersion={chartBundleVersion}
                       />
                     </Box>
                   ))}

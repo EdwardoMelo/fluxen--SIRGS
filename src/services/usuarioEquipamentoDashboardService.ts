@@ -1,6 +1,7 @@
 import api from '../api';
 import type { UsuarioEquipamentoDashboard } from '../types/UsuarioEquipamentoDashboard';
 import type { Equipamento } from '../types/Equipamento';
+import type { DashboardChartBundleResponse } from '../types/DashboardChartBundle';
 
 class UsuarioEquipamentoDashboardService {
   static endpoint = 'api/usuario-equipamento-dashboard';
@@ -10,6 +11,14 @@ class UsuarioEquipamentoDashboardService {
    */
   static async getEquipamentosDashboard(userId: number): Promise<UsuarioEquipamentoDashboard[]> {
     const response = await api.get(`${this.endpoint}/${userId}`);
+    return response.data;
+  }
+
+  /**
+   * Equipamentos do dashboard + dados de gráfico de cada card (uma requisição).
+   */
+  static async getDashboardBundle(userId: number): Promise<DashboardChartBundleResponse> {
+    const response = await api.get(`${this.endpoint}/${userId}/chart-bundle`);
     return response.data;
   }
 

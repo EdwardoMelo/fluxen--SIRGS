@@ -22,7 +22,7 @@ import RefreshIcon from '@mui/icons-material/Refresh';
 import FullscreenIcon from '@mui/icons-material/Fullscreen';
 import FullscreenExitIcon from '@mui/icons-material/FullscreenExit';
 import SettingsIcon from '@mui/icons-material/Settings';
-import { useEffect, useState, useRef } from 'react';
+import { useEffect, useState, useRef, useCallback } from 'react';
 import {
   Chart as ChartJS,
   CategoryScale,
@@ -112,7 +112,10 @@ interface ChartCardProps {
   initialMetricId?: number;
   dashboardItemId?: number;
   initialTipoGraficoId?: number;
-  onTipoGraficoChange?: () => void;
+  /** Dados vindos do GET chart-bundle (evita N requisições no primeiro render) */
+  prefetchedChart?: { chartData: ChartData | null; error?: string | null } | null;
+  /** Incrementado quando o bundle é recarregado (permite reaplicar prefetched) */
+  bundleVersion?: number;
 }
 
 // Mapeamento entre id_tipo_grafico e ChartType
@@ -141,7 +144,8 @@ const ChartCard: React.FC<ChartCardProps> = ({
   initialMetricId,
   dashboardItemId,
   initialTipoGraficoId,
-  onTipoGraficoChange
+  prefetchedChart,
+  bundleVersion = 0,
 }) => {
   const [chartType, setChartType] = useState<ChartType>(
     initialTipoGraficoId ? tipoGraficoToChartType(initialTipoGraficoId) : 'line'
@@ -154,7 +158,12 @@ const ChartCard: React.FC<ChartCardProps> = ({
   const [error, setError] = useState<string | null>(null);
   const [fullscreenOpen, setFullscreenOpen] = useState(false);
   const [settingsAnchorEl, setSettingsAnchorEl] = useState<HTMLElement | null>(null);
-  const refreshIntervalRef = useRef<number | null>(null);
+  const usedPrefetchRef = useRef(false);
+  /** Evita GET individual duplicado quando o bundle já hidratou o mesmo chartType+métrica+intervalo */
+  const lastHydratedDataKeyRef = useRef<string | null>(null);
+  /** Não colocar prefetchedChart nas deps do effect — referência nova do pai re-disparava lógica e podia puxar bundle de novo */
+  const prefetchedChartRef = useRef(prefetchedChart);
+  prefetchedChartRef.current = prefetchedChart;
 
   const settingsOpen = Boolean(settingsAnchorEl);
 
@@ -188,8 +197,12 @@ const ChartCard: React.FC<ChartCardProps> = ({
     fetchMetrics();
   }, [equipamentoId, initialMetricId]);
 
-  // Buscar dados do gráfico
-  const fetchChartData = async () => {
+  useEffect(() => {
+    usedPrefetchRef.current = false;
+    lastHydratedDataKeyRef.current = null;
+  }, [bundleVersion]);
+
+  const fetchChartData = useCallback(async () => {
     if (typeof selectedMetric !== 'number') {
       setChartData(null);
       return;
@@ -222,39 +235,50 @@ const ChartCard: React.FC<ChartCardProps> = ({
     } finally {
       setLoading(false);
     }
-  };
+  }, [equipamentoId, chartType, selectedMetric, timeRange]);
 
-  // Atualizar gráfico quando mudar tipo, métrica ou intervalo
+  // Bundle: hidrata sem GET /charts/... Individual: só quando a chave mudar (métrica/tipo/intervalo) ou sem bundle
   useEffect(() => {
-    fetchChartData();
-
-    // Limpar intervalo anterior
-    if (refreshIntervalRef.current !== null) {
-      clearInterval(refreshIntervalRef.current);
+    if (typeof selectedMetric !== 'number') {
+      return;
     }
 
-    // Configurar atualização automática (a cada 30 segundos para gráficos com intervalo de tempo)
-    if (chartType !== 'doughnut') {
-      refreshIntervalRef.current = window.setInterval(() => {
-        fetchChartData();
-      }, 30000);
-    } else {
-      // Para gráfico de rosca, atualizar a cada 10 segundos
-      refreshIntervalRef.current = window.setInterval(() => {
-        fetchChartData();
-      }, 10000);
-    }
+    const dataKey = `${chartType}-${selectedMetric}-${timeRange}`;
+    let hydratedFromBundle = false;
+    const pc = prefetchedChartRef.current;
 
-    return () => {
-      if (refreshIntervalRef.current !== null) {
-        clearInterval(refreshIntervalRef.current);
+    if (pc != null && !usedPrefetchRef.current) {
+      if (pc.chartData != null) {
+        usedPrefetchRef.current = true;
+        setChartData(pc.chartData);
+        setError(null);
+        setLoading(false);
+        lastHydratedDataKeyRef.current = dataKey;
+        hydratedFromBundle = true;
+      } else if (pc.error) {
+        usedPrefetchRef.current = true;
+        setChartData(null);
+        setError(pc.error);
+        setLoading(false);
+        lastHydratedDataKeyRef.current = dataKey;
+        hydratedFromBundle = true;
       }
-    };
-  }, [chartType, selectedMetric, timeRange]);
+    }
 
-  const handleRefresh = () => {
-    fetchChartData();
-  };
+    const needsNetworkFetch =
+      !hydratedFromBundle && lastHydratedDataKeyRef.current !== dataKey;
+
+    if (needsNetworkFetch) {
+      lastHydratedDataKeyRef.current = dataKey;
+      void fetchChartData();
+    }
+    // Atualização automática: chart-bundle no MainDashboard (sem loader nos cards)
+  }, [chartType, selectedMetric, timeRange, bundleVersion, fetchChartData]);
+
+  /** Atualizar gráfico: só endpoints /api/charts/... — não dispara o chart-bundle do dashboard */
+  const handleRefresh = useCallback(() => {
+    void fetchChartData();
+  }, [fetchChartData]);
 
   const handleSettingsClick = (event: React.MouseEvent<HTMLElement>) => {
     setSettingsAnchorEl(event.currentTarget);
@@ -490,15 +514,14 @@ const ChartCard: React.FC<ChartCardProps> = ({
                   const previousChartType = chartType;
                   setChartType(newChartType);
 
-                  // Atualizar no backend se dashboardItemId estiver disponível
-                  if (dashboardItemId && onTipoGraficoChange) {
+                  // Persistir no backend; o gráfico deste card atualiza via useEffect (fetchChartData)
+                  if (dashboardItemId) {
                     try {
                       const newTipoGraficoId = chartTypeToTipoGraficoId(newChartType);
                       await UsuarioEquipamentoDashboardService.updateTipoGrafico(
                         dashboardItemId,
                         newTipoGraficoId
                       );
-                      onTipoGraficoChange();
                     } catch (error) {
                       console.error('Erro ao atualizar tipo de gráfico:', error);
                       setChartType(previousChartType);
@@ -550,9 +573,12 @@ const ChartCard: React.FC<ChartCardProps> = ({
             <Divider sx={{ my: 0.5 }} />
 
             <Button
+              type="button"
               size="small"
               startIcon={<RefreshIcon />}
-              onClick={() => {
+              onClick={(e) => {
+                e.preventDefault();
+                e.stopPropagation();
                 handleRefresh();
                 handleSettingsClose();
               }}
@@ -573,6 +599,22 @@ const ChartCard: React.FC<ChartCardProps> = ({
           maxHeight: chartType === 'doughnut' ? '170px' : '170px',
           position: 'relative',
         }}>
+          {loading && chartData && typeof selectedMetric === 'number' && (
+            <Box
+              sx={{
+                position: 'absolute',
+                inset: 0,
+                display: 'flex',
+                justifyContent: 'center',
+                alignItems: 'center',
+                bgcolor: 'rgba(255,255,255,0.72)',
+                zIndex: 2,
+                borderRadius: 1,
+              }}
+            >
+              <CircularProgress size={36} />
+            </Box>
+          )}
           {loading && !chartData ? (
             <Box
               sx={{
@@ -665,18 +707,15 @@ const ChartCard: React.FC<ChartCardProps> = ({
                     const previousChartType = chartType;
                     setChartType(newChartType);
 
-                    // Atualizar no backend se dashboardItemId estiver disponível
-                    if (dashboardItemId && onTipoGraficoChange) {
+                    if (dashboardItemId) {
                       try {
                         const newTipoGraficoId = chartTypeToTipoGraficoId(newChartType);
                         await UsuarioEquipamentoDashboardService.updateTipoGrafico(
                           dashboardItemId,
                           newTipoGraficoId
                         );
-                        onTipoGraficoChange();
                       } catch (error) {
                         console.error('Erro ao atualizar tipo de gráfico:', error);
-                        // Reverter para o valor anterior em caso de erro
                         setChartType(previousChartType);
                       }
                     }
@@ -789,7 +828,16 @@ const ChartCard: React.FC<ChartCardProps> = ({
             <Box sx={{ flexGrow: 1 }} />
 
             <Tooltip title="Atualizar gráfico">
-              <IconButton size="small" onClick={handleRefresh} disabled={loading}>
+              <IconButton
+                type="button"
+                size="small"
+                onClick={(e) => {
+                  e.preventDefault();
+                  e.stopPropagation();
+                  handleRefresh();
+                }}
+                disabled={loading}
+              >
                 <RefreshIcon />
               </IconButton>
             </Tooltip>
@@ -797,6 +845,21 @@ const ChartCard: React.FC<ChartCardProps> = ({
 
           {/* Gráfico em tela cheia */}
           <Box sx={{ flex: 1, minHeight: '500px', position: 'relative' }}>
+            {loading && chartData && typeof selectedMetric === 'number' && (
+              <Box
+                sx={{
+                  position: 'absolute',
+                  inset: 0,
+                  display: 'flex',
+                  justifyContent: 'center',
+                  alignItems: 'center',
+                  bgcolor: 'rgba(255,255,255,0.72)',
+                  zIndex: 2,
+                }}
+              >
+                <CircularProgress size={40} />
+              </Box>
+            )}
             {loading && !chartData ? (
               <Box
                 sx={{
