@@ -1,10 +1,11 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { Box, Button, TextField, Typography } from '@mui/material';
-import { useDispatch } from 'react-redux';
+import { useDispatch, useSelector } from 'react-redux';
 import { login } from '../redux/slices/userSlice';
 import { setFeedback } from '../redux/slices/feedBackSlice';
 import AuthService from '../services/authService';
 import { useNavigate } from 'react-router-dom';
+import type { RootState } from '../redux/store';
 import logo from '../assets/logo.png';
 
 const LoginPage: React.FC = () => {
@@ -12,6 +13,14 @@ const LoginPage: React.FC = () => {
   const [password, setPassword] = useState('');
   const dispatch = useDispatch();
   const navigate = useNavigate();
+  const { isLoggedIn, user, isAuthChecking } = useSelector((state: RootState) => state.user);
+
+  useEffect(() => {
+    if (isAuthChecking) return;
+    if (isLoggedIn && user) {
+      navigate('/', { replace: true });
+    }
+  }, [isAuthChecking, isLoggedIn, user, navigate]);
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     try{ 

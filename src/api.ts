@@ -34,7 +34,7 @@ api.interceptors.response.use(
   (error) => {
     if (error.response?.status === 401) {
       // Só redireciona se não estiver já em uma rota pública
-      const publicRoutes = ['/auth', '/register', '/forgot-password', '/reset-password'];
+      const publicRoutes = ['/auth', '/register', '/forgot-password', '/reset-password', '/index'];
       if (!publicRoutes.includes(window.location.pathname)) {
         // Limpa o estado do Redux
         store.dispatch(logout());

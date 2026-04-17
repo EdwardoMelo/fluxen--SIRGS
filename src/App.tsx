@@ -8,15 +8,24 @@ import theme from './theme';
 import SnackBar from './components/shared/SnackBar';
 import { login, setAuthChecking } from './redux/slices/userSlice';
 import type { Usuario } from './types/Usuario';
-import { BrowserRouter as Router, useNavigate } from 'react-router-dom';
+import { BrowserRouter as Router, useLocation, useNavigate } from 'react-router-dom';
 import { Box, CircularProgress, Typography } from '@mui/material';
 import type { RootState } from './redux/store';
+
+/** Rotas sem menu lateral nem SnackBar (telas exclusivas: auth e landing). */
+const STANDALONE_PUBLIC_PATHS = ['/index', '/auth', '/register', '/forgot-password', '/reset-password'];
+
+function isStandalonePublicPath(pathname: string): boolean {
+  return STANDALONE_PUBLIC_PATHS.includes(pathname);
+}
 
 // Componente interno que inicializa o estado do usuário
 const AppContent: React.FC = () => {
   const dispatch = useDispatch();
   const { isAuthChecking } = useSelector((state: RootState) => state.user);
   const navigate = useNavigate();
+  const { pathname } = useLocation();
+  const hideAppShell = isStandalonePublicPath(pathname);
 
   useEffect(() => {
     const isJwtValid = (jwtToken: string): boolean => {
@@ -53,7 +62,7 @@ const AppContent: React.FC = () => {
       localStorage.removeItem('token');
       localStorage.removeItem('user');
       dispatch(setAuthChecking(false));
-      const publicRoutes = ['/auth', '/register', '/forgot-password', '/reset-password'];
+      const publicRoutes = ['/auth', '/register', '/forgot-password', '/reset-password', '/index'];
       if (!publicRoutes.includes(window.location.pathname)) {
         navigate('/auth', { replace: true });
       }
@@ -83,9 +92,9 @@ const AppContent: React.FC = () => {
 
   return (
     <>
-      <SideMenu />
+      {!hideAppShell && <SideMenu />}
       <AppRoutes />
-      <SnackBar />
+      {!hideAppShell && <SnackBar />}
     </>
   );
 };

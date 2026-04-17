@@ -13,12 +13,14 @@ import ForgotPasswordPage from './pages/ForgotPasswordPage';
 import ResetPasswordPage from './pages/ResetPasswordPage';
 import SupportPage from './pages/SupportPage';
 import SystemAnnouncementsPage from './pages/SystemAnnouncementsPage';
+import LandingIndexPage from './pages/LandingIndexPage';
 import ProtectedRoute from './components/ProtectedRoute';
 import ContingencyBlocker from './components/ContingencyBlocker';
 
 const AppRoutes: React.FC = () => {
   return (
     <Routes>
+      <Route path="/index" element={<LandingIndexPage />} />
       {/* Rota padrão - Dashboard (protegida) */}
       <Route path="/" element={
         <ProtectedRoute>
