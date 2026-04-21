@@ -22,10 +22,11 @@ function isStandalonePublicPath(pathname: string): boolean {
 // Componente interno que inicializa o estado do usuário
 const AppContent: React.FC = () => {
   const dispatch = useDispatch();
-  const { isAuthChecking } = useSelector((state: RootState) => state.user);
+  const { isAuthChecking, user } = useSelector((state: RootState) => state.user);
   const navigate = useNavigate();
   const { pathname } = useLocation();
-  const hideAppShell = isStandalonePublicPath(pathname);
+  const hideAppShell =
+    isStandalonePublicPath(pathname) || (pathname === '/' && !user);
 
   useEffect(() => {
     const isJwtValid = (jwtToken: string): boolean => {
@@ -62,7 +63,7 @@ const AppContent: React.FC = () => {
       localStorage.removeItem('token');
       localStorage.removeItem('user');
       dispatch(setAuthChecking(false));
-      const publicRoutes = ['/auth', '/register', '/forgot-password', '/reset-password', '/index'];
+      const publicRoutes = ['/', '/auth', '/register', '/forgot-password', '/reset-password', '/index'];
       if (!publicRoutes.includes(window.location.pathname)) {
         navigate('/auth', { replace: true });
       }

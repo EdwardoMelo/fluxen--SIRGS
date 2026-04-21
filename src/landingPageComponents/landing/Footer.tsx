@@ -3,7 +3,7 @@ import { Logo } from "./Logo";
 export const Footer = () => {
   return (
     <footer className="border-t border-border bg-background">
-      <div className="container flex flex-col items-center justify-between gap-4 py-8 md:flex-row">
+      <div className="container flex flex-col items-center justify-between gap-4 py-6 md:flex-row">
         <Logo />
         <p className="text-xs text-muted-foreground">
           © {new Date().getFullYear()} Fluxen. Telemetria em nuvem para operações críticas.

@@ -9,7 +9,7 @@ export const Hero = () => {
   return (
     <section className="relative overflow-hidden bg-gradient-hero">
       <div aria-hidden className="absolute inset-0 grid-bg" />
-      <div className="container relative grid gap-12 py-16 md:py-24 lg:grid-cols-2 lg:gap-8">
+      <div className="container relative grid gap-10 py-12 md:py-16 lg:grid-cols-2 lg:gap-8">
         <div className="flex flex-col justify-center animate-fade-in-up">
           <a
             href="#produto"

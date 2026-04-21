@@ -10,8 +10,8 @@ const highlights = [
 
 export const ProductDemo = () => {
   return (
-    <section className="bg-background py-20 md:py-28">
-      <div className="container grid gap-12 lg:grid-cols-2 lg:items-center">
+    <section className="bg-background py-14 md:py-20">
+      <div className="container grid gap-8 lg:grid-cols-2 lg:items-center">
         <div className="order-2 lg:order-1">
           <DashboardMockup />
         </div>

@@ -1,6 +1,5 @@
 import React from 'react';
 import { Route, Routes, Navigate } from 'react-router-dom';
-import HomePage from './pages/HomePage';
 import LoginPage from './pages/LoginPage';
 import EquipamentosPage from './pages/EquipamentosPage';
 import ClientesPage from './pages/ClientesPage';
@@ -16,17 +15,14 @@ import SystemAnnouncementsPage from './pages/SystemAnnouncementsPage';
 import LandingIndexPage from './pages/LandingIndexPage';
 import ProtectedRoute from './components/ProtectedRoute';
 import ContingencyBlocker from './components/ContingencyBlocker';
+import RootLandingOrDashboard from './components/RootLandingOrDashboard';
 
 const AppRoutes: React.FC = () => {
   return (
     <Routes>
       <Route path="/index" element={<LandingIndexPage />} />
-      {/* Rota padrão - Dashboard (protegida) */}
-      <Route path="/" element={
-        <ProtectedRoute>
-          <HomePage />
-        </ProtectedRoute>
-      } />
+      {/* "/" — landing para visitantes; dashboard para sessão válida (token + user no Redux) */}
+      <Route path="/" element={<RootLandingOrDashboard />} />
 
       {/* Redirecionamento para dashboard */}
       <Route path="/dashboard" element={<Navigate to="/" replace />} />

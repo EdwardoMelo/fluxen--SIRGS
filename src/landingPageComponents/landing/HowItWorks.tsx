@@ -23,9 +23,9 @@ const steps = [
 
 export const HowItWorks = () => {
   return (
-    <section id="como-funciona" className="bg-background py-20 md:py-28">
+    <section id="como-funciona" className="bg-background py-14 md:py-20">
       <div className="container">
-        <div className="mx-auto mb-14 max-w-2xl text-center">
+        <div className="mx-auto mb-10 max-w-2xl text-center">
           <p className="mb-2 text-xs font-semibold uppercase tracking-widest text-primary">Como funciona</p>
           <h2 className="text-3xl font-bold tracking-tight md:text-4xl">Do sensor à decisão em 3 passos.</h2>
         </div>

@@ -30,9 +30,9 @@ const solutions = [
 
 export const ProblemSolution = () => {
   return (
-    <section className="bg-background py-20 md:py-28">
+    <section className="bg-background py-14 md:py-20">
       <div className="container">
-        <div className="mx-auto mb-14 max-w-2xl text-center">
+        <div className="mx-auto mb-10 max-w-2xl text-center">
           <p className="mb-2 text-xs font-semibold uppercase tracking-widest text-primary">Por que Fluxen</p>
           <h2 className="text-3xl font-bold tracking-tight md:text-4xl">Pare de operar no escuro.</h2>
           <p className="mt-3 text-muted-foreground">

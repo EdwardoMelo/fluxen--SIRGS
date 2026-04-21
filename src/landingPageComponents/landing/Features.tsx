@@ -35,9 +35,9 @@ const features = [
 
 export const Features = () => {
   return (
-    <section id="produto" className="bg-secondary/30 py-20 md:py-28">
+    <section id="produto" className="bg-secondary/30 py-14 md:py-20">
       <div className="container">
-        <div className="mx-auto mb-14 max-w-2xl text-center">
+        <div className="mx-auto mb-10 max-w-2xl text-center">
           <p className="mb-2 text-xs font-semibold uppercase tracking-widest text-primary">Plataforma</p>
           <h2 className="text-3xl font-bold tracking-tight md:text-4xl">
             Tudo que sua operação precisa, em um só lugar.

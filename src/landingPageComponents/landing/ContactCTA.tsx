@@ -44,7 +44,7 @@ export const ContactCTA = () => {
   };
 
   return (
-    <section id="contato" className="relative overflow-hidden bg-gradient-cta py-20 md:py-28">
+    <section id="contato" className="relative overflow-hidden bg-gradient-cta py-14 md:py-20">
       <div
         aria-hidden
         className="absolute inset-0 opacity-30"
@@ -53,7 +53,7 @@ export const ContactCTA = () => {
             "radial-gradient(circle at 20% 20%, hsl(212 95% 70% / 0.4), transparent 40%), radial-gradient(circle at 80% 80%, hsl(199 89% 60% / 0.4), transparent 40%)",
         }}
       />
-      <div className="container relative grid gap-10 lg:grid-cols-2 lg:items-center">
+      <div className="container relative grid gap-8 lg:grid-cols-2 lg:items-center">
         <div className="text-primary-foreground">
           <h2 className="text-balance text-3xl font-bold tracking-tight md:text-5xl">
             Comece a enxergar sua operação com clareza hoje.

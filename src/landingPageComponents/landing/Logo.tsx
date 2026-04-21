@@ -3,10 +3,10 @@ import logo from "../assets/fluxen-logo.png";
 
 export const Logo = ({ className = "" }: { className?: string }) => (
   <a href="#" className={`flex items-center gap-2 ${className}`} aria-label="Fluxen">
-    <img src={logo} alt="" width={36} height={36} className="h-9 w-9" />
+    <img src={logo} alt="" width={44} height={44} className="h-11 w-11" />
     <div className="leading-none">
-      <div className="text-lg font-bold tracking-tight text-primary">FLUXEN</div>
-      <div className="text-[9px] font-semibold tracking-[0.18em] text-muted-foreground">
+      <div className="text-xl font-bold tracking-tight text-primary">FLUXEN</div>
+      <div className="text-[10px] font-semibold tracking-[0.18em] text-muted-foreground">
         TELEMETRIA EM NUVEM
       </div>
     </div>
