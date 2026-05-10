@@ -11,3 +11,13 @@ export interface DashboardChartBundleResponse {
   items: UsuarioEquipamentoDashboard[];
   charts: DashboardChartBundleEntry[];
 }
+
+export interface AddEquipamentoToDashboardResult {
+  item: UsuarioEquipamentoDashboard;
+  bundle: DashboardChartBundleResponse;
+}
+
+export interface UpdateTipoGraficoResult {
+  item: UsuarioEquipamentoDashboard;
+  bundle: DashboardChartBundleResponse;
+}

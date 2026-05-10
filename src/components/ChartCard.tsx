@@ -41,6 +41,7 @@ import MetricaService from '../services/metricaService';
 import UsuarioEquipamentoDashboardService from '../services/usuarioEquipamentoDashboardService';
 import type { ChartData, ChartType, TimeRange } from '../types/Chart';
 import type { Metrica } from '../types/Metrica';
+import type { DashboardChartBundleResponse } from '../types/DashboardChartBundle';
 
 ChartJS.register(
   CategoryScale,
@@ -116,6 +117,8 @@ interface ChartCardProps {
   prefetchedChart?: { chartData: ChartData | null; error?: string | null } | null;
   /** Incrementado quando o bundle é recarregado (permite reaplicar prefetched) */
   bundleVersion?: number;
+  /** Após PATCH tipo de gráfico, aplica o bundle sem novo GET */
+  onChartBundleUpdated?: (bundle: DashboardChartBundleResponse) => void;
 }
 
 // Mapeamento entre id_tipo_grafico e ChartType
@@ -146,6 +149,7 @@ const ChartCard: React.FC<ChartCardProps> = ({
   initialTipoGraficoId,
   prefetchedChart,
   bundleVersion = 0,
+  onChartBundleUpdated,
 }) => {
   const [chartType, setChartType] = useState<ChartType>(
     initialTipoGraficoId ? tipoGraficoToChartType(initialTipoGraficoId) : 'line'
@@ -518,10 +522,12 @@ const ChartCard: React.FC<ChartCardProps> = ({
                   if (dashboardItemId) {
                     try {
                       const newTipoGraficoId = chartTypeToTipoGraficoId(newChartType);
-                      await UsuarioEquipamentoDashboardService.updateTipoGrafico(
+                      const { bundle } = await UsuarioEquipamentoDashboardService.updateTipoGrafico(
                         dashboardItemId,
-                        newTipoGraficoId
+                        newTipoGraficoId,
+                        timeRange
                       );
+                      onChartBundleUpdated?.(bundle);
                     } catch (error) {
                       console.error('Erro ao atualizar tipo de gráfico:', error);
                       setChartType(previousChartType);
@@ -557,7 +563,23 @@ const ChartCard: React.FC<ChartCardProps> = ({
                 <Select
                   value={timeRange}
                   label="Intervalo"
-                  onChange={(e) => setTimeRange(e.target.value as TimeRange)}
+                  onChange={async (e) => {
+                    const newTimeRange = e.target.value as TimeRange;
+                    const previousTimeRange = timeRange;
+                    setTimeRange(newTimeRange);
+                    if (dashboardItemId) {
+                      try {
+                        const bundle = await UsuarioEquipamentoDashboardService.updateTimeRange(
+                          dashboardItemId,
+                          newTimeRange
+                        );
+                        onChartBundleUpdated?.(bundle);
+                      } catch (error) {
+                        console.error('Erro ao atualizar intervalo do gráfico:', error);
+                        setTimeRange(previousTimeRange);
+                      }
+                    }
+                  }}
                 >
                   <MenuItem value="5min">Últimos 5 min</MenuItem>
                   <MenuItem value="15min">Últimos 15 min</MenuItem>
@@ -710,10 +732,12 @@ const ChartCard: React.FC<ChartCardProps> = ({
                     if (dashboardItemId) {
                       try {
                         const newTipoGraficoId = chartTypeToTipoGraficoId(newChartType);
-                        await UsuarioEquipamentoDashboardService.updateTipoGrafico(
+                        const { bundle } = await UsuarioEquipamentoDashboardService.updateTipoGrafico(
                           dashboardItemId,
-                          newTipoGraficoId
+                          newTipoGraficoId,
+                          timeRange
                         );
+                        onChartBundleUpdated?.(bundle);
                       } catch (error) {
                         console.error('Erro ao atualizar tipo de gráfico:', error);
                         setChartType(previousChartType);
@@ -791,7 +815,23 @@ const ChartCard: React.FC<ChartCardProps> = ({
                                   <Select
                                       value={timeRange}
                                       label="Intervalo"
-                                      onChange={(e) => setTimeRange(e.target.value as TimeRange)}
+                                  onChange={async (e) => {
+                                    const newTimeRange = e.target.value as TimeRange;
+                                    const previousTimeRange = timeRange;
+                                    setTimeRange(newTimeRange);
+                                    if (dashboardItemId) {
+                                      try {
+                                        const bundle = await UsuarioEquipamentoDashboardService.updateTimeRange(
+                                          dashboardItemId,
+                                          newTimeRange
+                                        );
+                                        onChartBundleUpdated?.(bundle);
+                                      } catch (error) {
+                                        console.error('Erro ao atualizar intervalo do gráfico:', error);
+                                        setTimeRange(previousTimeRange);
+                                      }
+                                    }
+                                  }}
                                       sx={{ borderRadius: 1 }}
                                       MenuProps={{
                                           PaperProps: {

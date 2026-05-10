@@ -431,6 +431,7 @@ const Dashboard = () => {
                         initialTipoGraficoId={dashboardItem.id_tipo_grafico || undefined}
                         prefetchedChart={chartBundleByItemId[dashboardItem.id] ?? null}
                         bundleVersion={chartBundleVersion}
+                        onChartBundleUpdated={applyChartBundle}
                       />
                     </Box>
                   ))}
@@ -445,7 +446,13 @@ const Dashboard = () => {
           user={user}
           open={selectorOpen}
           onClose={() => setSelectorOpen(false)}
-          onUpdate={fetchDashboardEquipamentos}
+          onUpdate={(bundle) => {
+            if (bundle) {
+              applyChartBundle(bundle);
+            } else {
+              void fetchDashboardEquipamentos();
+            }
+          }}
         />
       )}
     </Box>

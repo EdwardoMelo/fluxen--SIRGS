@@ -2,8 +2,8 @@ import { Check } from "lucide-react";
 import { DashboardMockup } from "./DashboardMockup";
 
 const highlights = [
-  "Métricas e gauges atualizados em tempo real",
-  "Drill-down por equipamento, canal ou unidade",
+  "Números atualizados em tempo real",
+  "Dados por equipamento, canal ou unidade",
   "Histórico completo com exportação em poucos cliques",
   "Compartilhamento seguro com clientes e equipes",
 ];

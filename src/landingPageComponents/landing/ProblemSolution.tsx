@@ -36,7 +36,7 @@ export const ProblemSolution = () => {
           <p className="mb-2 text-xs font-semibold uppercase tracking-widest text-primary">Por que Fluxen</p>
           <h2 className="text-3xl font-bold tracking-tight md:text-4xl">Pare de operar no escuro.</h2>
           <p className="mt-3 text-muted-foreground">
-            A maioria das operações industriais perde tempo e dinheiro com dados fragmentados. A Fluxen muda isso.
+            A maioria das operações industriais perde tempo e dinheiro com dados fragmentados. O Fluxen muda isso.
           </p>
         </div>
 

@@ -2,9 +2,11 @@ import axios from 'axios';
 import { store } from './redux/store';
 import { logout } from './redux/slices/userSlice';
 
+console.log('import.meta.env.VITE_API_URL: ', import.meta.env.VITE_API_URL);
+
 const api = axios.create({
   // baseURL: 'http://localhost:3000', // Atualize com a URL do backend
-  baseURL: 'https://api.fluxen.cloud',
+  baseURL: import.meta.env.VITE_API_URL,
 });
 
 api.interceptors.request.use((config) => {

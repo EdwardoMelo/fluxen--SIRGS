@@ -25,6 +25,7 @@ import type { Equipamento } from '../types/Equipamento';
 import type { Usuario } from '../types/Usuario';
 import type { UsuarioEquipamentoDashboard } from '../types/UsuarioEquipamentoDashboard';
 import type { Metrica } from '../types/Metrica';
+import type { DashboardChartBundleResponse } from '../types/DashboardChartBundle';
 import { useDispatch } from 'react-redux';
 import { setFeedback } from '../redux/slices/feedBackSlice';
 
@@ -32,7 +33,8 @@ interface DashboardEquipamentosSelectorProps {
   user: Usuario;
   open: boolean;
   onClose: () => void;
-  onUpdate: () => void;
+  /** Bundle opcional evita novo GET /chart-bundle após add/remove */
+  onUpdate: (bundle?: DashboardChartBundleResponse) => void;
 }
 
 const DashboardEquipamentosSelector: React.FC<DashboardEquipamentosSelectorProps> = ({
@@ -116,7 +118,7 @@ const DashboardEquipamentosSelector: React.FC<DashboardEquipamentosSelectorProps
 
     setSaving(true);
     try {
-      const newItem = await UsuarioEquipamentoDashboardService.addEquipamentoToDashboard(
+      const { item: newItem, bundle } = await UsuarioEquipamentoDashboardService.addEquipamentoToDashboard(
         user.id,
         selectedEquipamentoForAdd,
         selectedMetricForAdd || null,
@@ -137,7 +139,7 @@ const DashboardEquipamentosSelector: React.FC<DashboardEquipamentosSelectorProps
       setSelectedEquipamentoForAdd(null);
       setSelectedMetricForAdd(null);
       
-      onUpdate();
+      onUpdate(bundle);
     } catch (error: any) {
       dispatch(
         setFeedback({
@@ -171,7 +173,7 @@ const DashboardEquipamentosSelector: React.FC<DashboardEquipamentosSelectorProps
 
     setSaving(true);
     try {
-      await UsuarioEquipamentoDashboardService.removeEquipamentoFromDashboardById(dashboardItem.id);
+      const bundle = await UsuarioEquipamentoDashboardService.removeEquipamentoFromDashboardById(dashboardItem.id);
       
       // Atualizar listas localmente
       setSelectedDashboardItems(prev => prev.filter(item => item.id !== dashboardItem.id));
@@ -184,7 +186,7 @@ const DashboardEquipamentosSelector: React.FC<DashboardEquipamentosSelectorProps
         })
       );
       
-      onUpdate();
+      onUpdate(bundle);
     } catch (error: any) {
       dispatch(
         setFeedback({

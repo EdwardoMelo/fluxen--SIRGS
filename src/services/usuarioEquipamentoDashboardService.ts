@@ -1,7 +1,12 @@
 import api from '../api';
 import type { UsuarioEquipamentoDashboard } from '../types/UsuarioEquipamentoDashboard';
 import type { Equipamento } from '../types/Equipamento';
-import type { DashboardChartBundleResponse } from '../types/DashboardChartBundle';
+import type { TimeRange } from '../types/Chart';
+import type {
+  DashboardChartBundleResponse,
+  AddEquipamentoToDashboardResult,
+  UpdateTipoGraficoResult,
+} from '../types/DashboardChartBundle';
 
 class UsuarioEquipamentoDashboardService {
   static endpoint = 'api/usuario-equipamento-dashboard';
@@ -30,14 +35,14 @@ class UsuarioEquipamentoDashboardService {
     equipamentoId: number,
     id_metrica?: number | null,
     id_tipo_grafico?: number | null
-  ): Promise<UsuarioEquipamentoDashboard> {
+  ): Promise<AddEquipamentoToDashboardResult> {
     const response = await api.post(this.endpoint, {
       userId,
       equipamentoId,
       id_metrica: id_metrica || null,
       id_tipo_grafico: id_tipo_grafico || null
     });
-    return response.data;
+    return response.data as AddEquipamentoToDashboardResult;
   }
 
   /**
@@ -45,8 +50,9 @@ class UsuarioEquipamentoDashboardService {
    */
   static async removeEquipamentoFromDashboardById(
     id: number
-  ): Promise<void> {
-    await api.delete(`${this.endpoint}/item/${id}`);
+  ): Promise<DashboardChartBundleResponse> {
+    const response = await api.delete(`${this.endpoint}/item/${id}`);
+    return response.data.bundle as DashboardChartBundleResponse;
   }
 
   /**
@@ -56,9 +62,10 @@ class UsuarioEquipamentoDashboardService {
     userId: number,
     equipamentoId: number,
     id_metrica?: number | null
-  ): Promise<void> {
+  ): Promise<DashboardChartBundleResponse> {
     const params = id_metrica ? `?id_metrica=${id_metrica}` : '';
-    await api.delete(`${this.endpoint}/${userId}/${equipamentoId}${params}`);
+    const response = await api.delete(`${this.endpoint}/${userId}/${equipamentoId}${params}`);
+    return response.data.bundle as DashboardChartBundleResponse;
   }
 
   /**
@@ -77,12 +84,24 @@ class UsuarioEquipamentoDashboardService {
    */
   static async updateTipoGrafico(
     id: number,
-    id_tipo_grafico: number | null
-  ): Promise<UsuarioEquipamentoDashboard> {
+    id_tipo_grafico: number | null,
+    timeRange?: TimeRange
+  ): Promise<UpdateTipoGraficoResult> {
     const response = await api.put(`${this.endpoint}/item/${id}/tipo-grafico`, {
-      id_tipo_grafico: id_tipo_grafico || null
+      id_tipo_grafico: id_tipo_grafico || null,
+      timeRange
     });
-    return response.data;
+    return response.data as UpdateTipoGraficoResult;
+  }
+
+  static async updateTimeRange(
+    id: number,
+    timeRange: TimeRange
+  ): Promise<DashboardChartBundleResponse> {
+    const response = await api.patch(`${this.endpoint}/item/${id}/time-range`, {
+      timeRange,
+    });
+    return response.data.bundle as DashboardChartBundleResponse;
   }
 
   /**
