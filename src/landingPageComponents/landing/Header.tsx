@@ -33,9 +33,9 @@ export const Header = () => {
           : "bg-transparent"
       }`}
     >
-      <div className="container flex h-16 items-center justify-between">
+      <div className="container flex items-center justify-between gap-2 py-1.5 md:gap-3 md:py-2">
         <Logo />
-        <nav className="hidden items-center gap-8 md:flex" aria-label="Principal">
+        <nav className="hidden items-center gap-5 md:flex lg:gap-6" aria-label="Principal">
           {links.map((l) => (
             <a
               key={l.href}
@@ -58,7 +58,7 @@ export const Header = () => {
         </div>
         <button
           aria-label="Abrir menu"
-          className="rounded-md p-2 text-foreground md:hidden"
+          className="rounded-md p-1.5 text-foreground md:hidden"
           onClick={() => setOpen((s) => !s)}
         >
           {open ? <X className="h-5 w-5" /> : <Menu className="h-5 w-5" />}

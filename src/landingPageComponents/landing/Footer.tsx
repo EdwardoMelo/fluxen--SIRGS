@@ -4,7 +4,7 @@ export const Footer = () => {
   return (
     <footer className="border-t border-border bg-background">
       <div className="container flex flex-col items-center justify-between gap-4 py-6 md:flex-row">
-        <Logo />
+        <Logo variant="footer" />
         <div className="flex flex-col items-center gap-2">
           <p className="text-xs font-bold text-muted-foreground">
           © {new Date().getFullYear()} - FLUXEN - Telemetria em nuvem.
