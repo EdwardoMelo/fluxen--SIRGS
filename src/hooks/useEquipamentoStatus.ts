@@ -31,21 +31,15 @@ export const useEquipamentoStatus = () => {
         page: 1,
         pageSize: 5
       });
-      const newLogCount = tableData.pagination?.totalItems ?? tableData.rows?.length ?? 0;
+      const hasLogs = (tableData.rows?.length ?? 0) > 0;
       const now = new Date();
 
-      setStatus(prev => {
-        const previousLogCount = prev.currentLogCount;
-
-        const isOnline = newLogCount === 0 ? false : (previousLogCount === 0 ? true : newLogCount > previousLogCount);
-
-        return {
-          isOnline,
-          lastUpdate: now,
-          isRefreshing: false,
-          currentLogCount: newLogCount
-        };
-      });
+      setStatus(prev => ({
+        isOnline: hasLogs,
+        lastUpdate: now,
+        isRefreshing: false,
+        currentLogCount: tableData.rows?.length ?? 0
+      }));
     } catch (error) {
       console.error('Erro ao verificar status do equipamento:', error);
       setStatus(prev => ({

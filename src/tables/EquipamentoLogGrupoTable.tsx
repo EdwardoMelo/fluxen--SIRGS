@@ -1,5 +1,5 @@
 import { Box, Typography, Chip, Alert, Tooltip, useMediaQuery, useTheme, CircularProgress } from "@mui/material";
-import { DataGrid, type GridColDef, type GridRenderCellParams, type GridPaginationModel } from "@mui/x-data-grid";
+import { DataGrid, type GridColDef, type GridPaginationMeta, type GridPaginationModel, type GridRenderCellParams } from "@mui/x-data-grid";
 import { useDispatch } from "react-redux";
 import { setFeedback } from "../redux/slices/feedBackSlice";
 import EquipamentoLogService from "../services/equipamentoLogService";
@@ -29,8 +29,10 @@ function mergeNewerLogRows(current: any[], incoming: any[]): any[] {
 interface PaginationMeta {
     page: number;
     pageSize: number;
-    totalItems: number;
-    totalPages: number;
+    totalItems?: number | null;
+    totalPages?: number | null;
+    hasNextPage?: boolean;
+    incremental?: boolean;
 }
 
 interface TableData {
@@ -59,7 +61,8 @@ function EquipamentoLogGrupoTable({ equipamentoId }: EquipamentoLogGrupoTablePro
     const lastNewestGroupIdRef = useRef<number | null>(null);
     const [isAutoRefreshing, setIsAutoRefreshing] = useState(false);
     const [situation, setSituation] = useState<'working' | 'frozen' | null>(null);
-    const [rowCount, setRowCount] = useState(0);
+    /** Paginação server-side sem total: `hasNextPage` vem da API; `rowCount={-1}` no DataGrid. */
+    const [paginationMeta, setPaginationMeta] = useState<GridPaginationMeta>({ hasNextPage: true });
 
     // Paginação: padrão 10; opções 10 / 20 / 30
     const [paginationModel, setPaginationModel] = useState<GridPaginationModel>({
@@ -164,7 +167,9 @@ function EquipamentoLogGrupoTable({ equipamentoId }: EquipamentoLogGrupoTablePro
             setColumns(formattedColumns);
             setRows(tableData.rows || []);
             setSituation(tableData.situation ?? null);
-            setRowCount(tableData.pagination?.totalItems ?? tableData.rows?.length ?? 0);
+            setPaginationMeta({
+                hasNextPage: tableData.pagination?.hasNextPage ?? false,
+            });
 
             if (currentPagination.page === 0) {
                 const first = tableData.rows?.[0];
@@ -224,9 +229,6 @@ function EquipamentoLogGrupoTable({ equipamentoId }: EquipamentoLogGrupoTablePro
                 return merged.slice(0, pageSize);
             });
             setSituation(tableData.situation ?? null);
-            if (tableData.pagination?.totalItems != null) {
-                setRowCount(tableData.pagination.totalItems);
-            }
         } catch (error: any) {
             dispatch(
                 setFeedback({
@@ -341,16 +343,21 @@ function EquipamentoLogGrupoTable({ equipamentoId }: EquipamentoLogGrupoTablePro
                         rows={rows}
                         columns={columns}
                         rowHeight={40}
-                        sx={tableStyles}
+                        sx={{
+                            ...tableStyles,
+                            '& .MuiTablePagination-displayedRows': { display: 'none' },
+                        }}
                         loading={false}
                         getRowId={(row) => row.id}
                         paginationMode="server"
                         paginationModel={paginationModel}
+                        paginationMeta={paginationMeta}
+                        onPaginationMetaChange={setPaginationMeta}
                         onPaginationModelChange={(model) => {
                             setPaginationModel(model);
                             fetchTableData(model);
                         }}
-                        rowCount={rowCount}
+                        rowCount={-1}
                         checkboxSelection={false}
                         pageSizeOptions={[10, 20, 30]}
                         disableRowSelectionOnClick
