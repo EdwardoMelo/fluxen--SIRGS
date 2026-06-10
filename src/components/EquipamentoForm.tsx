@@ -1,4 +1,4 @@
-import { Box, Stack } from '@mui/material'
+import { Box, FormControl, MenuItem, Select, Stack, Typography } from '@mui/material'
 import React, { useCallback, useEffect } from 'react'
 import Input from './shared/Input'
 import { useParams } from 'react-router-dom';
@@ -11,11 +11,20 @@ import { addEquipamento, replaceEquipamento, setCreatingEquipamento, setEditingE
 import { useClientOptions } from '../hooks/useClientOptions';
 import OptionsField from './shared/OptionsField';
 import { BaseCancelButton } from './shared/BaseCancelButton';
+import {
+  convertToTimeoutSeconds,
+  getMaxValueForUnit,
+  MAX_TIMEOUT_ONLINE_SEGUNDOS,
+  secondsToTimeoutDisplay,
+  TIMEOUT_ONLINE_UNIT_OPTIONS,
+  type TimeoutOnlineUnit,
+} from '../utils/timeoutOnlineUtils';
 
 
 export interface EquipmentForm {
   nome: string;
   id_cliente?: number;
+  timeout_online_segundos?: number | null;
 }
 
 interface EquipamentoFormProps {
@@ -27,8 +36,9 @@ const EquipamentoForm: React.FC<EquipamentoFormProps> = ({ disabled = false }) =
   const {id} = useParams();
   const [formData, setFormData] = React.useState<EquipmentForm>({
     nome: '',
-
   });
+  const [timeoutValue, setTimeoutValue] = React.useState<number | ''>('');
+  const [timeoutUnit, setTimeoutUnit] = React.useState<TimeoutOnlineUnit>('segundos');
   const [validationErrors, setValidationErrors] = React.useState<Record<string, string>>({});
   const [equipamentoId, setEquipamentoId] = React.useState<number | null>(null);
   const editingEquipamento = useSelector((state: RootState) => state.equipamentosTable.editingEquipamento);
@@ -41,24 +51,30 @@ const EquipamentoForm: React.FC<EquipamentoFormProps> = ({ disabled = false }) =
     { label: 'Cliente', name: 'id_cliente' },
   ];
 
-  const resetFormData = ( ) => { 
-      fetchDataCallback();
+  const buildPayload = (): EquipmentForm => {
+    const timeoutSeconds =
+      timeoutValue === '' || timeoutValue === null
+        ? null
+        : convertToTimeoutSeconds(Number(timeoutValue), timeoutUnit);
+
+    return {
+      ...formData,
+      timeout_online_segundos: timeoutSeconds,
+    };
+  };
+
+  const resetFormData = () => {
+    fetchDataCallback();
   };
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const { name, value } = e.target;
-    console.log('handleChange - name:', name, 'value:', value);
-    
-    // Limitar o campo nome a 28 caracteres
     const limitedValue = name === 'nome' && value.length > 28 ? value.slice(0, 28) : value;
-    
-    setFormData((prevData) => {
-      const newData = { ...prevData, [name]: limitedValue };
-      console.log('handleChange - newData:', newData);
-      return newData;
-    });
+    setFormData((prevData) => ({
+      ...prevData,
+      [name]: limitedValue,
+    }));
 
-    // Limpar erro de validação quando o usuário começar a digitar
     if (validationErrors[name]) {
       setValidationErrors((prev) => {
         const newErrors = { ...prev };
@@ -68,10 +84,34 @@ const EquipamentoForm: React.FC<EquipamentoFormProps> = ({ disabled = false }) =
     }
   };
 
+  const handleTimeoutValueChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const raw = e.target.value;
+    setTimeoutValue(raw === '' ? '' : Number(raw));
+
+    if (validationErrors.timeout_online) {
+      setValidationErrors((prev) => {
+        const newErrors = { ...prev };
+        delete newErrors.timeout_online;
+        return newErrors;
+      });
+    }
+  };
+
+  const handleTimeoutUnitChange = (unit: TimeoutOnlineUnit) => {
+    setTimeoutUnit(unit);
+
+    if (validationErrors.timeout_online) {
+      setValidationErrors((prev) => {
+        const newErrors = { ...prev };
+        delete newErrors.timeout_online;
+        return newErrors;
+      });
+    }
+  };
+
   const handleClientChange = (value: string | number) => {
     setFormData({ ...formData, id_cliente: value ? Number(value) : undefined });
 
-    // Limpar erro de validação do cliente
     if (validationErrors.id_cliente) {
       setValidationErrors((prev) => {
         const newErrors = { ...prev };
@@ -84,17 +124,30 @@ const EquipamentoForm: React.FC<EquipamentoFormProps> = ({ disabled = false }) =
   const validateForm = (): boolean => {
     const errors: Record<string, string> = {};
 
-    // Validar campos obrigatórios
     if (!formData.nome || formData.nome.trim() === '') {
       errors.nome = 'Nome do equipamento é obrigatório';
     } else if (formData.nome.length > 28) {
       errors.nome = 'Nome do equipamento deve ter no máximo 28 caracteres';
     }
 
-    // Validação específica para criação (quando não há id)
     if (!id && !equipamentoId) {
       if (!formData.id_cliente) {
         errors.id_cliente = 'Cliente é obrigatório';
+      }
+    }
+
+    if (timeoutValue !== '' && timeoutValue !== null) {
+      if (!Number.isInteger(timeoutValue) || timeoutValue < 1) {
+        errors.timeout_online = 'Informe um valor inteiro maior que zero';
+      } else {
+        const timeoutSeconds = convertToTimeoutSeconds(timeoutValue, timeoutUnit);
+        const maxForUnit = getMaxValueForUnit(timeoutUnit);
+
+        if (timeoutValue > maxForUnit) {
+          errors.timeout_online = `Máximo de ${maxForUnit} ${timeoutUnit} (${MAX_TIMEOUT_ONLINE_SEGUNDOS}s)`;
+        } else if (timeoutSeconds > MAX_TIMEOUT_ONLINE_SEGUNDOS) {
+          errors.timeout_online = `Valor máximo permitido é ${MAX_TIMEOUT_ONLINE_SEGUNDOS} segundos (24h)`;
+        }
       }
     }
 
@@ -105,7 +158,6 @@ const EquipamentoForm: React.FC<EquipamentoFormProps> = ({ disabled = false }) =
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
 
-    // Validar formulário antes de enviar
     if (!validateForm()) {
       dispatch(
         setFeedback({
@@ -116,11 +168,13 @@ const EquipamentoForm: React.FC<EquipamentoFormProps> = ({ disabled = false }) =
       return;
     }
 
+    const payload = buildPayload();
+
     try {
       if (equipamentoId) {
         const updatedEquip = await EquipamentoService.updateEquipamento(
           Number(equipamentoId),
-          formData
+          payload
         );
         dispatch(replaceEquipamento(updatedEquip));
         dispatch(setEditingEquipamento(null));
@@ -132,8 +186,8 @@ const EquipamentoForm: React.FC<EquipamentoFormProps> = ({ disabled = false }) =
         );
         return;
       }
-      //create
-      const newEquip = await EquipamentoService.createEquipamento(formData);
+
+      const newEquip = await EquipamentoService.createEquipamento(payload);
       dispatch(addEquipamento(newEquip));
       dispatch(setCreatingEquipamento(false));
       dispatch(
@@ -142,7 +196,6 @@ const EquipamentoForm: React.FC<EquipamentoFormProps> = ({ disabled = false }) =
           type: "success",
         })
       );
-
     } catch (error: any) {
       dispatch(
         setFeedback({
@@ -159,11 +212,20 @@ const EquipamentoForm: React.FC<EquipamentoFormProps> = ({ disabled = false }) =
         const equip = await EquipamentoService.getEquipamentoById(
           Number(editingEquipamento || id)
         );
-        console.log(equip);
         setFormData({
           nome: equip.nome,
-          id_cliente: equip.id_cliente
+          id_cliente: equip.id_cliente,
         });
+
+        if (equip.timeout_online_segundos != null) {
+          const display = secondsToTimeoutDisplay(equip.timeout_online_segundos);
+          setTimeoutValue(display.value);
+          setTimeoutUnit(display.unit);
+        } else {
+          setTimeoutValue('');
+          setTimeoutUnit('segundos');
+        }
+
         setEquipamentoId(equip.id);
         setValidationErrors({});
       }
@@ -175,11 +237,14 @@ const EquipamentoForm: React.FC<EquipamentoFormProps> = ({ disabled = false }) =
         })
       );
     }
-  }, [editingEquipamento]);
+  }, [editingEquipamento, id, dispatch]);
 
   useEffect(() => {
     fetchDataCallback();
   }, [fetchDataCallback]);
+
+  const timeoutPreviewSeconds =
+    timeoutValue === '' ? null : convertToTimeoutSeconds(Number(timeoutValue), timeoutUnit);
 
   return (
     <Box
@@ -190,62 +255,102 @@ const EquipamentoForm: React.FC<EquipamentoFormProps> = ({ disabled = false }) =
         alignItems: "flex-start",
         gap: 2,
         width: "100%",
-
       }}
     >
       <Box
         sx={{ display: "flex", flexDirection: "column", gap: 2, width: "100%" }}
       >
-        {fields.map((field) => {
-          return (
-            <Stack
+        {fields.map((field) => (
+          <Stack
+            key={field.label}
+            direction={"column"}
+            alignItems={"flex-start"}
+            sx={{ width: "100%" }}
+          >
+            <Input
               key={field.label}
-              direction={"column"}
-              alignItems={"flex-start"}
-              sx={{ width: "100%" }}
-            >
+              label={field.label}
+              name={field.name}
+              value={formData[field.name as keyof EquipmentForm] || ''}
+              onChange={handleChange}
+              disabled={disabled}
+              required
+              maxLength={field.name === 'nome' ? 28 : undefined}
+            />
+            {validationErrors[field.name] && (
+              <span className="mt-1 text-xs text-red-500">
+                {validationErrors[field.name]}
+              </span>
+            )}
+          </Stack>
+        ))}
+
+        <Stack direction="column" alignItems="flex-start" sx={{ width: "100%" }}>
+          <Typography
+            component="label"
+            sx={{ mb: 1, fontSize: '0.875rem', fontWeight: 500, color: 'text.secondary' }}
+          >
+            Timeout status online
+          </Typography>
+          <Stack direction="row" spacing={1} sx={{ width: '100%' }}>
+            <Box sx={{ flex: 1 }}>
               <Input
-                key={field.label}
-                label={field.label}
-                name={field.name}
-                value={formData[field.name as keyof EquipmentForm] || ''}
-                onChange={handleChange}
+                name="timeout_online_value"
+                type="number"
+                value={timeoutValue}
+                onChange={handleTimeoutValueChange}
                 disabled={disabled}
-                required
-                maxLength={field.name === 'nome' ? 28 : undefined}
+                min={1}
               />
-              {validationErrors[field.name] && (
-                <span className="mt-1 text-xs text-red-500">
-                  {validationErrors[field.name]}
-                </span>
-              )}
-            </Stack>
-          );
-        })}
-        {!id && optionFields.map((field) => {
-          return (
-            <Stack
-              key={field.name}
-              direction={"column"}
-              alignItems={"flex-start"}
-              sx={{ width: "100%" }}
-            >
-              <OptionsField
-                options={clientOptions}
-                label={field.label}
-                value={formData[field.name as keyof EquipmentForm]}
-                onChange={handleClientChange}
-                disabled={disabled}
-                required
-              />
-              {validationErrors[field.name] && (
-                <span className="mt-1 text-xs text-red-500">
-                  {validationErrors[field.name]}
-                </span>
-              )}
-            </Stack>
-          );
-        })}
+            </Box>
+            <FormControl size="small" sx={{ minWidth: 130 }} disabled={disabled}>
+              <Select
+                value={timeoutUnit}
+                onChange={(e) => handleTimeoutUnitChange(e.target.value as TimeoutOnlineUnit)}
+              >
+                {TIMEOUT_ONLINE_UNIT_OPTIONS.map((option) => (
+                  <MenuItem key={option.value} value={option.value}>
+                    {option.label}
+                  </MenuItem>
+                ))}
+              </Select>
+            </FormControl>
+          </Stack>
+          <Typography variant="caption" color="text.secondary" sx={{ mt: 0.5 }}>
+            Tempo sem logs para considerar offline. Vazio = 10s (padrão). A verificação inclui margem de 10s de latência.
+            {timeoutPreviewSeconds !== null && (
+              <> Equivale a <strong>{timeoutPreviewSeconds}s</strong> no servidor.</>
+            )}
+          </Typography>
+          {validationErrors.timeout_online && (
+            <span className="mt-1 text-xs text-red-500">
+              {validationErrors.timeout_online}
+            </span>
+          )}
+        </Stack>
+
+        {!id && optionFields.map((field) => (
+          <Stack
+            key={field.name}
+            direction={"column"}
+            alignItems={"flex-start"}
+            sx={{ width: "100%" }}
+          >
+            <OptionsField
+              options={clientOptions}
+              label={field.label}
+              value={formData[field.name as keyof EquipmentForm]}
+              onChange={handleClientChange}
+              disabled={disabled}
+              required
+            />
+            {validationErrors[field.name] && (
+              <span className="mt-1 text-xs text-red-500">
+                {validationErrors[field.name]}
+              </span>
+            )}
+          </Stack>
+        ))}
       </Box>
       {!disabled && (
         <Stack direction={"row"} justifyContent="flex-end" gap={2} width={"100%"}>
@@ -253,10 +358,10 @@ const EquipamentoForm: React.FC<EquipamentoFormProps> = ({ disabled = false }) =
             Salvar
           </BaseButton>
           <BaseCancelButton
-            onClick={() => { 
+            onClick={() => {
               setValidationErrors({});
               if (id) {
-                resetFormData()
+                resetFormData();
               }
               dispatch(setCreatingEquipamento(false));
               dispatch(setEditingEquipamento(null));
@@ -270,4 +375,4 @@ const EquipamentoForm: React.FC<EquipamentoFormProps> = ({ disabled = false }) =
   );
 }
 
-export default EquipamentoForm
+export default EquipamentoForm;

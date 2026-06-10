@@ -1,7 +1,7 @@
 import api from '../api';
 import type { EquipmentForm } from '../components/EquipamentoForm';
 import type { EquipmentFilters } from '../redux/slices/equipamentosTableSlice';
-import type { Equipamento } from '../types/Equipamento';
+import type { Equipamento, EquipamentoOnlineStatus } from '../types/Equipamento';
 import type { Usuario } from '../types/Usuario';
 
 class EquipamentoService {
@@ -43,6 +43,11 @@ class EquipamentoService {
 
   static async deleteEquipamento(id: number): Promise<void> {
     await api.delete(`${this.endpoint}/${id}`);
+  }
+
+  static async getOnlineStatus(id: number): Promise<EquipamentoOnlineStatus> {
+    const response = await api.get(`${this.endpoint}/${id}/online-status`);
+    return response.data;
   }
 }
 

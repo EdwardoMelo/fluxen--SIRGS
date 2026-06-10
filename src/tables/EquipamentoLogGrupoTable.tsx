@@ -13,6 +13,13 @@ import { parseTimestampAsLocal } from "../utils/dateUtils";
 const EQUIPAMENTO_LOG_GRUPO_AUTO_REFRESH_ENABLED = true;
 const AUTO_REFRESH_INTERVAL_MS = 10_000;
 
+/** Largura mínima da coluna para exibir o header completo sem truncar. */
+function estimateColumnMinWidth(headerName: string, type?: string): number {
+    const baseMin = type === 'dateTime' ? 200 : 120;
+    const estimated = headerName.length * 7.5 + 48;
+    return Math.ceil(Math.max(baseMin, estimated));
+}
+
 /** Junta linhas novas (ids inexistentes) e ordena por timestamp desc; desempate por id. */
 function mergeNewerLogRows(current: any[], incoming: any[]): any[] {
     const existingIds = new Set(current.map((r) => r.id));
@@ -85,6 +92,35 @@ function EquipamentoLogGrupoTable({ equipamentoId }: EquipamentoLogGrupoTablePro
     const MetricCell = (params: GridRenderCellParams) => {
         const { value, field, row } = params;
         const alertField = `${field}_alert`;
+        const deviceAlarmeField = `${field}_device_alarme`;
+        const alarmeTextoField = `${field}_alarme_texto`;
+
+        const deviceAlarme = row[deviceAlarmeField] === true;
+        const alarmeTexto = row[alarmeTextoField] as string | undefined;
+
+        if (deviceAlarme && alarmeTexto) {
+            return (
+                <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5, justifyContent: 'end' }}>
+                    <Tooltip title="Alarme reportado pelo equipamento">
+                        <WarningIcon
+                            sx={{
+                                fontSize: 16,
+                                color: 'error.main',
+                            }}
+                        />
+                    </Tooltip>
+                    <Typography
+                        variant="body2"
+                        sx={{
+                            color: 'error.main',
+                            fontWeight: 'bold',
+                        }}
+                    >
+                        {alarmeTexto}
+                    </Typography>
+                </Box>
+            );
+        }
 
         const alert = row[alertField] as 'min' | 'max' | 'none';
 
@@ -135,8 +171,13 @@ function EquipamentoLogGrupoTable({ equipamentoId }: EquipamentoLogGrupoTablePro
             });
             // Ensure columns have proper formatting for DataGrid
             const formattedColumns: GridColDef[] = tableData.columns.map(col => {
-                const baseColumn = {
+                const headerName = String(col.headerName ?? col.field ?? '');
+                const minWidth = estimateColumnMinWidth(headerName, col.type);
+                const baseColumn: GridColDef = {
                     ...col,
+                    flex: undefined,
+                    minWidth,
+                    width: minWidth,
                     sortable: true,
                     filterable: true,
                     resizable: true,
@@ -339,13 +380,26 @@ function EquipamentoLogGrupoTable({ equipamentoId }: EquipamentoLogGrupoTablePro
             ) : isMobile ? (
                 <></>
             ) : (
+                <Box sx={{ width: '100%', overflowX: 'auto' }}>
                     <DataGrid
                         rows={rows}
                         columns={columns}
                         rowHeight={40}
                         sx={{
                             ...tableStyles,
+                            minWidth: 'max-content',
                             '& .MuiTablePagination-displayedRows': { display: 'none' },
+                            '& .MuiDataGrid-columnHeader': {
+                                overflow: 'visible',
+                            },
+                            '& .MuiDataGrid-columnHeaderTitleContainer': {
+                                overflow: 'visible',
+                            },
+                            '& .MuiDataGrid-columnHeaderTitle': {
+                                overflow: 'visible',
+                                textOverflow: 'clip',
+                                whiteSpace: 'nowrap',
+                            },
                         }}
                         loading={false}
                         getRowId={(row) => row.id}
@@ -368,6 +422,7 @@ function EquipamentoLogGrupoTable({ equipamentoId }: EquipamentoLogGrupoTablePro
                         sortingMode="client"
                         filterMode="client"
                     />
+                </Box>
             )}
         </Box>
     );

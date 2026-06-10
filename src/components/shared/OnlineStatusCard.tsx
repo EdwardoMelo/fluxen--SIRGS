@@ -97,7 +97,7 @@ const OnlineStatusCard: React.FC<OnlineStatusCardProps> = ({
                 display: 'block'
               }}
             >
-              Última atualização
+              Último log recebido
             </Typography>
             <Typography 
               variant="body2" 

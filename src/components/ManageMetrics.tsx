@@ -33,7 +33,8 @@ const ManageMetrics: React.FC<ManageMetricsProps> = ({ disabled = false }) => {
     valor_minimo: 0,
     valor_maximo: 0,
     alarme_minimo: null,
-    alarme_maximo: null
+    alarme_maximo: null,
+    texto_alarme: null,
   });
   const [enableAlarmeMinimo, setEnableAlarmeMinimo] = React.useState<boolean>(false);
   const [enableAlarmeMaximo, setEnableAlarmeMaximo] = React.useState<boolean>(false);
@@ -81,7 +82,8 @@ const ManageMetrics: React.FC<ManageMetricsProps> = ({ disabled = false }) => {
         valor_minimo: 0,
         valor_maximo: 0,
         alarme_minimo: null,
-        alarme_maximo: null
+        alarme_maximo: null,
+        texto_alarme: null,
       });
       setEnableAlarmeMinimo(false);
       setEnableAlarmeMaximo(false);
@@ -264,6 +266,7 @@ const ManageMetrics: React.FC<ManageMetricsProps> = ({ disabled = false }) => {
       ...formData,
       alarme_minimo: enableAlarmeMinimo ? formData.alarme_minimo : null,
       alarme_maximo: enableAlarmeMaximo ? formData.alarme_maximo : null,
+      texto_alarme: formData.texto_alarme?.trim() || null,
     };
 
     // Validar formulário antes de adicionar
@@ -390,10 +393,11 @@ const ManageMetrics: React.FC<ManageMetricsProps> = ({ disabled = false }) => {
   // Função para gerar o payload JSON baseado nas métricas associadas
   const generatePayload = () => {
     const logs = associatedMetrics.map(metric => ({
-      id_equipamento: Number(id), // ID do equipamento atual
+      id_equipamento: Number(id),
       id_metrica: metric.id,
-      valor: 0, // Valor bruto do sensor (0-4096)
-      valor_convertido: null // Valor já convertido para a unidade correta da métrica (opcional)
+      valor: 0,
+      valor_convertido: null,
+      alarme: false,
     }));
 
     return {
@@ -522,6 +526,7 @@ const ManageMetrics: React.FC<ManageMetricsProps> = ({ disabled = false }) => {
                           valor_maximo: equipamentoMetrica?.valor_maximo || 0,
                           alarme_minimo: equipamentoMetrica?.alarme_minimo ?? null,
                           alarme_maximo: equipamentoMetrica?.alarme_maximo ?? null,
+                          texto_alarme: equipamentoMetrica?.texto_alarme ?? null,
                         });
                           setEnableAlarmeMinimo(hasAlarmeMinimo);
                           setEnableAlarmeMaximo(hasAlarmeMaximo);
@@ -660,6 +665,7 @@ const ManageMetrics: React.FC<ManageMetricsProps> = ({ disabled = false }) => {
                           valor_maximo: equipamentoMetrica?.valor_maximo || 0,
                           alarme_minimo: equipamentoMetrica?.alarme_minimo ?? null,
                           alarme_maximo: equipamentoMetrica?.alarme_maximo ?? null,
+                          texto_alarme: equipamentoMetrica?.texto_alarme ?? null,
                         });
                         setEnableAlarmeMinimo(equipamentoMetrica?.alarme_minimo != null);
                         setEnableAlarmeMaximo(equipamentoMetrica?.alarme_maximo != null);
@@ -809,6 +815,17 @@ const ManageMetrics: React.FC<ManageMetricsProps> = ({ disabled = false }) => {
               </>
             )}
           </Box>
+          <Box>
+            <Input
+              label="Texto do alarme"
+              type="text"
+              value={formData.texto_alarme ?? ''}
+              onChange={(e) =>
+                setFormData({ ...formData, texto_alarme: e.target.value || null })
+              }
+              helperText="Texto exibido na tabela de logs quando o equipamento enviar alarme: true para esta métrica"
+            />
+          </Box>
           <BaseButton onClick={( ) => { 
             if (editingEquipamentoMetrica) {
               handleUpdateEquipamentoMetrica();
@@ -899,7 +916,8 @@ const ManageMetrics: React.FC<ManageMetricsProps> = ({ disabled = false }) => {
               <strong>id_equipamento:</strong> ID do equipamento (já preenchido automaticamente)<br />
               <strong>id_metrica:</strong> ID da métrica específica (já preenchido automaticamente)<br />
               <strong>valor:</strong> Valor bruto do sensor (0-4096) - substitua pelos valores reais<br />
-              <strong>valor_convertido:</strong> Valor já convertido para a unidade correta da métrica (opcional) - pode ser null se não aplicável
+              <strong>valor_convertido:</strong> Valor já convertido para a unidade correta da métrica (opcional) - pode ser null se não aplicável<br />
+              <strong>alarme:</strong> Quando true, a tabela de logs exibe o &quot;Texto do alarme&quot; configurado na métrica (opcional)
             </Typography>
           </Box>
 

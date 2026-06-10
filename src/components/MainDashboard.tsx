@@ -15,7 +15,7 @@ import CheckCircleIcon from "@mui/icons-material/CheckCircle";
 
 import { useSelector } from "react-redux";
 import type { RootState } from "../redux/store";
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useMemo } from "react";
 import DashboardEquipamentosSelector from "./DashboardEquipamentosSelector";
 import ChartCard from "./ChartCard";
 import UsuarioEquipamentoDashboardService from "../services/usuarioEquipamentoDashboardService";
@@ -27,6 +27,7 @@ import type { Notificacao } from "../types/Notificacao";
 import type { ChartData } from "../types/Chart";
 import type { DashboardChartBundleResponse } from "../types/DashboardChartBundle";
 import NotificacoesVirtualList from "./notificacoes/NotificacoesVirtualList";
+import { useDashboardOnlineStatus } from "../hooks/useDashboardOnlineStatus";
 
 /** Intervalo para GET chart-bundle em background (substitui o poll por card) */
 const DASHBOARD_BUNDLE_REFRESH_MS = 30_000;
@@ -47,6 +48,12 @@ const Dashboard = () => {
   const [countNaoVisualizadas, setCountNaoVisualizadas] = useState(0);
   const [loadingNotificacoes, setLoadingNotificacoes] = useState(false);
   const { activeAnnouncement, isContingency } = useSystemAnnouncement();
+
+  const equipamentoIds = useMemo(
+    () => dashboardEquipamentos.map((item) => item.id_equipamento),
+    [dashboardEquipamentos]
+  );
+  const { getIsOnline } = useDashboardOnlineStatus(equipamentoIds);
 
   const applyChartBundle = useCallback((bundle: DashboardChartBundleResponse) => {
     setDashboardEquipamentos(bundle.items);
@@ -426,6 +433,7 @@ const Dashboard = () => {
                       <ChartCard
                         equipamentoId={dashboardItem.id_equipamento}
                         equipamentoNome={dashboardItem.equipamento?.nome || 'Equipamento'}
+                        equipamentoIsOnline={getIsOnline(dashboardItem.id_equipamento)}
                         initialMetricId={dashboardItem.id_metrica || undefined}
                         dashboardItemId={dashboardItem.id}
                         initialTipoGraficoId={dashboardItem.id_tipo_grafico || undefined}

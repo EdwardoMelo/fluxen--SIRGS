@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import {
   Dialog,
   DialogTitle,
@@ -14,15 +14,22 @@ import {
   Typography,
   Alert,
   CircularProgress,
+  FormGroup,
+  FormControlLabel,
+  Checkbox,
 } from '@mui/material';
 import { DatePicker } from '@mui/x-date-pickers/DatePicker';
 import { LocalizationProvider } from '@mui/x-date-pickers/LocalizationProvider';
 import { AdapterDateFns } from '@mui/x-date-pickers/AdapterDateFns';
 import { ptBR } from 'date-fns/locale';
 import ReportService from '../../services/reportService';
+import MetricaService from '../../services/metricaService';
 import { setFeedback } from '../../redux/slices/feedBackSlice';
 import { useDispatch, useSelector } from 'react-redux';
 import type { RootState } from '../../redux/store';
+import type { Metrica } from '../../types/Metrica';
+
+const PDF_MAX_COLUMNS = 8;
 
 interface ExportReportDialogProps {
   open: boolean;
@@ -39,17 +46,62 @@ const ExportReportDialog: React.FC<ExportReportDialogProps> = ({
 }) => {
   const dispatch = useDispatch();
   const { user } = useSelector((state: RootState) => state.user);
-  const [startDate, setStartDate] = useState<Date | null>(new Date(Date.now() - 7 * 24 * 60 * 60 * 1000)); // 7 dias atrás
+  const [startDate, setStartDate] = useState<Date | null>(new Date(Date.now() - 7 * 24 * 60 * 60 * 1000));
   const [endDate, setEndDate] = useState<Date | null>(new Date());
   const [format, setFormat] = useState<'xlsx' | 'pdf'>('xlsx');
   const [email, setEmail] = useState<string>(user?.email || '');
+  const [metrics, setMetrics] = useState<Metrica[]>([]);
+  const [selectedMetricIds, setSelectedMetricIds] = useState<number[]>([]);
   const [loading, setLoading] = useState(false);
+  const [loadingMetrics, setLoadingMetrics] = useState(false);
   const [error, setError] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (!open) return;
+
+    const fetchMetrics = async () => {
+      setLoadingMetrics(true);
+      try {
+        const equipamentoMetrics = await MetricaService.getMetricaByEquipamentoId(equipamentoId);
+        setMetrics(equipamentoMetrics);
+        setSelectedMetricIds(equipamentoMetrics.slice(0, PDF_MAX_COLUMNS).map((metric) => metric.id));
+      } catch {
+        dispatch(
+          setFeedback({
+            message: 'Erro ao carregar métricas do equipamento',
+            type: 'error',
+          })
+        );
+      } finally {
+        setLoadingMetrics(false);
+      }
+    };
+
+    void fetchMetrics();
+  }, [open, equipamentoId, dispatch]);
+
+  const handleMetricToggle = (metricId: number) => {
+    setSelectedMetricIds((prev) => {
+      if (prev.includes(metricId)) {
+        return prev.filter((id) => id !== metricId);
+      }
+      if (prev.length >= PDF_MAX_COLUMNS) {
+        return prev;
+      }
+      return [...prev, metricId];
+    });
+  };
+
+  const handleFormatChange = (newFormat: 'xlsx' | 'pdf') => {
+    setFormat(newFormat);
+    if (newFormat === 'pdf' && selectedMetricIds.length === 0 && metrics.length > 0) {
+      setSelectedMetricIds(metrics.slice(0, PDF_MAX_COLUMNS).map((metric) => metric.id));
+    }
+  };
 
   const handleSubmit = async () => {
     setError(null);
 
-    // Validações
     if (!startDate || !endDate) {
       setError('Selecione as datas de início e fim');
       return;
@@ -76,6 +128,17 @@ const ExportReportDialog: React.FC<ExportReportDialogProps> = ({
       return;
     }
 
+    if (format === 'pdf') {
+      if (selectedMetricIds.length === 0) {
+        setError('Selecione ao menos uma coluna para o PDF');
+        return;
+      }
+      if (selectedMetricIds.length > PDF_MAX_COLUMNS) {
+        setError(`Selecione no máximo ${PDF_MAX_COLUMNS} colunas para o PDF`);
+        return;
+      }
+    }
+
     setLoading(true);
 
     try {
@@ -84,6 +147,7 @@ const ExportReportDialog: React.FC<ExportReportDialogProps> = ({
         endDate: endDate.toISOString(),
         format,
         email: email || undefined,
+        ...(format === 'pdf' ? { metricIds: selectedMetricIds } : {}),
       });
 
       dispatch(
@@ -164,12 +228,50 @@ const ExportReportDialog: React.FC<ExportReportDialogProps> = ({
               <Select
                 value={format}
                 label="Formato"
-                onChange={(e) => setFormat(e.target.value as 'xlsx' | 'pdf')}
+                onChange={(e) => handleFormatChange(e.target.value as 'xlsx' | 'pdf')}
               >
                 <MenuItem value="xlsx">Excel (XLSX)</MenuItem>
                 <MenuItem value="pdf">PDF</MenuItem>
               </Select>
             </FormControl>
+
+            {format === 'pdf' && (
+              <Box>
+                <Typography variant="subtitle2" gutterBottom>
+                  Colunas do PDF ({selectedMetricIds.length}/{PDF_MAX_COLUMNS})
+                </Typography>
+                <Typography variant="caption" color="text.secondary" display="block" sx={{ mb: 1 }}>
+                  Selecione até {PDF_MAX_COLUMNS} métricas. O PDF será gerado em orientação paisagem.
+                </Typography>
+                {loadingMetrics ? (
+                  <Box sx={{ display: 'flex', justifyContent: 'center', py: 2 }}>
+                    <CircularProgress size={24} />
+                  </Box>
+                ) : metrics.length === 0 ? (
+                  <Alert severity="warning">Nenhuma métrica associada a este equipamento.</Alert>
+                ) : (
+                  <FormGroup sx={{ maxHeight: 220, overflowY: 'auto' }}>
+                    {metrics.map((metric) => {
+                      const checked = selectedMetricIds.includes(metric.id);
+                      const disabled = !checked && selectedMetricIds.length >= PDF_MAX_COLUMNS;
+                      return (
+                        <FormControlLabel
+                          key={metric.id}
+                          control={
+                            <Checkbox
+                              checked={checked}
+                              onChange={() => handleMetricToggle(metric.id)}
+                              disabled={disabled}
+                            />
+                          }
+                          label={`${metric.nome} (${metric.unidade})`}
+                        />
+                      );
+                    })}
+                  </FormGroup>
+                )}
+              </Box>
+            )}
 
             <TextField
               label="Email (opcional)"
@@ -194,7 +296,7 @@ const ExportReportDialog: React.FC<ExportReportDialogProps> = ({
           <Button
             onClick={handleSubmit}
             variant="contained"
-            disabled={loading || !startDate || !endDate}
+            disabled={loading || !startDate || !endDate || (format === 'pdf' && selectedMetricIds.length === 0)}
             startIcon={loading ? <CircularProgress size={20} /> : null}
           >
             {loading ? 'Processando...' : 'Solicitar Relatório'}
@@ -206,4 +308,3 @@ const ExportReportDialog: React.FC<ExportReportDialogProps> = ({
 };
 
 export default ExportReportDialog;
-

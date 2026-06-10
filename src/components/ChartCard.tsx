@@ -42,6 +42,7 @@ import UsuarioEquipamentoDashboardService from '../services/usuarioEquipamentoDa
 import type { ChartData, ChartType, TimeRange } from '../types/Chart';
 import type { Metrica } from '../types/Metrica';
 import type { DashboardChartBundleResponse } from '../types/DashboardChartBundle';
+import EquipamentoOnlineIndicator from './shared/EquipamentoOnlineIndicator';
 
 ChartJS.register(
   CategoryScale,
@@ -113,6 +114,8 @@ interface ChartCardProps {
   initialMetricId?: number;
   dashboardItemId?: number;
   initialTipoGraficoId?: number;
+  /** Status online do equipamento (preenchido pelo dashboard; 1 req por equipamento único). */
+  equipamentoIsOnline?: boolean | null;
   /** Dados vindos do GET chart-bundle (evita N requisições no primeiro render) */
   prefetchedChart?: { chartData: ChartData | null; error?: string | null } | null;
   /** Incrementado quando o bundle é recarregado (permite reaplicar prefetched) */
@@ -147,6 +150,7 @@ const ChartCard: React.FC<ChartCardProps> = ({
   initialMetricId,
   dashboardItemId,
   initialTipoGraficoId,
+  equipamentoIsOnline = null,
   prefetchedChart,
   bundleVersion = 0,
   onChartBundleUpdated,
@@ -443,9 +447,14 @@ const ChartCard: React.FC<ChartCardProps> = ({
               sx={{
                 fontFamily: 'monospace',
                 fontSize: '0.75rem',
+                display: 'flex',
+                alignItems: 'center',
+                gap: 0.75,
+                flexWrap: 'wrap',
               }}
             >
-              ID: {equipamentoId}
+              <span>ID: {equipamentoId}</span>
+              <EquipamentoOnlineIndicator isOnline={equipamentoIsOnline} />
             </Typography>
           </Box>
           <Tooltip title="Configurações">
@@ -706,8 +715,19 @@ const ChartCard: React.FC<ChartCardProps> = ({
               <Typography variant="h6" sx={{ fontWeight: 600, fontSize: '1.1rem' }}>
                 {equipamentoNome}
               </Typography>
-              <Typography variant="caption" color="text.secondary" sx={{ fontFamily: 'monospace', fontSize: '0.75rem' }}>
-                ID: {equipamentoId}
+              <Typography
+                variant="caption"
+                color="text.secondary"
+                sx={{
+                  fontFamily: 'monospace',
+                  fontSize: '0.75rem',
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: 0.75,
+                }}
+              >
+                <span>ID: {equipamentoId}</span>
+                <EquipamentoOnlineIndicator isOnline={equipamentoIsOnline} />
               </Typography>
             </Box>
             <IconButton size="small" onClick={() => setFullscreenOpen(false)}>

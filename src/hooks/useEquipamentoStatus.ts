@@ -1,24 +1,29 @@
 import { useState, useEffect, useCallback } from 'react';
 import { useParams } from 'react-router-dom';
-import EquipamentoLogService from '../services/equipamentoLogService';
+import EquipamentoService from '../services/equipamentoService';
+import { parseTimestampAsLocal } from '../utils/dateUtils';
 
 interface EquipamentoStatus {
   isOnline: boolean;
-  lastUpdate: Date | null;
+  lastLogAt: Date | null;
   isRefreshing: boolean;
-  currentLogCount: number;
+  timeoutOnlineSegundos: number;
+  effectiveTimeoutSegundos: number;
 }
 
-/** `false` desativa polling e chamadas à API de logs só para status. Reative para voltar o monitoramento. */
+/** `false` desativa polling e chamadas à API de status. */
 export const EQUIPAMENTO_STATUS_MONITORING_ENABLED = true;
+
+const STATUS_POLL_INTERVAL_MS = 10_000;
 
 export const useEquipamentoStatus = () => {
   const { id } = useParams();
   const [status, setStatus] = useState<EquipamentoStatus>({
     isOnline: false,
-    lastUpdate: null,
+    lastLogAt: null,
     isRefreshing: false,
-    currentLogCount: 0
+    timeoutOnlineSegundos: 10,
+    effectiveTimeoutSegundos: 20,
   });
 
   const checkStatus = useCallback(async (isAutoRefresh = false) => {
@@ -27,34 +32,34 @@ export const useEquipamentoStatus = () => {
     setStatus(prev => ({ ...prev, isRefreshing: isAutoRefresh }));
 
     try {
-      const tableData = await EquipamentoLogService.getLogsTableData(Number(id), {
-        page: 1,
-        pageSize: 5
-      });
-      const hasLogs = (tableData.rows?.length ?? 0) > 0;
-      const now = new Date();
+      const onlineStatus = await EquipamentoService.getOnlineStatus(Number(id));
 
-      setStatus(prev => ({
-        isOnline: hasLogs,
-        lastUpdate: now,
+      setStatus({
+        isOnline: onlineStatus.isOnline,
+        lastLogAt: onlineStatus.lastLogAt
+          ? parseTimestampAsLocal(onlineStatus.lastLogAt)
+          : null,
         isRefreshing: false,
-        currentLogCount: tableData.rows?.length ?? 0
-      }));
+        timeoutOnlineSegundos: onlineStatus.timeoutOnlineSegundos,
+        effectiveTimeoutSegundos: onlineStatus.effectiveTimeoutSegundos,
+      });
     } catch (error) {
       console.error('Erro ao verificar status do equipamento:', error);
       setStatus(prev => ({
         ...prev,
         isRefreshing: false,
-        isOnline: false
+        isOnline: false,
       }));
     }
   }, [id]);
 
   useEffect(() => {
+    if (!EQUIPAMENTO_STATUS_MONITORING_ENABLED) return;
+
     checkStatus();
     const interval = setInterval(() => {
       checkStatus(true);
-    }, 10000);
+    }, STATUS_POLL_INTERVAL_MS);
     return () => {
       clearInterval(interval);
     };
@@ -62,6 +67,8 @@ export const useEquipamentoStatus = () => {
 
   return {
     ...status,
-    checkStatus
+    /** Compatível com OnlineStatusCard (último log recebido). */
+    lastUpdate: status.lastLogAt,
+    checkStatus,
   };
 };

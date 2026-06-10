@@ -5,6 +5,7 @@ interface RequestReportDTO {
   endDate: string;
   format: 'xlsx' | 'pdf';
   email?: string;
+  metricIds?: number[];
 }
 
 interface RequestReportResponse {
