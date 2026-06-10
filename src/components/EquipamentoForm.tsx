@@ -339,7 +339,7 @@ const EquipamentoForm: React.FC<EquipamentoFormProps> = ({ disabled = false }) =
             <OptionsField
               options={clientOptions}
               label={field.label}
-              value={formData[field.name as keyof EquipmentForm]}
+              value={formData.id_cliente}
               onChange={handleClientChange}
               disabled={disabled}
               required
