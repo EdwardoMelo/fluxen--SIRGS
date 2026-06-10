@@ -1,13 +1,13 @@
 import { Cloud } from "lucide-react";
-import logo from "../assets/fluxen-logo.png";
+import logo from "../../assets/logo.png";
 
 type LogoVariant = "header" | "footer";
 
 const variantClass: Record<LogoVariant, string> = {
   header:
-    "h-auto w-auto object-contain object-left min-h-[5.4rem] min-w-[min(17.55rem,calc(100vw-6.3rem))] max-h-[7.2rem] max-w-[min(22.5rem,calc(100vw-4.5rem))] sm:min-h-[5.85rem] sm:min-w-[18rem] sm:max-h-[6.3rem] sm:max-w-[23.4rem] md:min-h-[6.3rem] md:min-w-[18.9rem] md:max-h-[6.975rem] md:max-w-[24.3rem] lg:min-h-[6.75rem] lg:min-w-[19.8rem] lg:max-h-[7.2rem] lg:max-w-[25.2rem]",
+    "h-auto w-auto object-contain object-left min-h-[5.6rem] min-w-[min(18rem,calc(100vw-5.4rem))] max-h-[7.4rem] max-w-[min(23.4rem,calc(100vw-3.6rem))] sm:min-h-[6.1rem] sm:min-w-[18.5rem] sm:max-h-[6.5rem] sm:max-w-[24.3rem] md:min-h-[6.5rem] md:min-w-[19.6rem] md:max-h-[7.2rem] md:max-w-[25.2rem] lg:min-h-[7rem] lg:min-w-[20.5rem] lg:max-h-[7.4rem] lg:max-w-[26.1rem]",
   footer:
-    "h-auto w-auto object-contain object-left min-h-[6.75rem] min-w-[min(19.8rem,calc(100vw-5.4rem))] max-h-[9rem] max-w-[min(27rem,96vw)] sm:min-h-[7.2rem] sm:min-w-[21.6rem] sm:max-h-[8.55rem] sm:max-w-[27rem] md:min-h-[8.1rem] md:min-w-[23.4rem] md:max-h-[9.45rem] md:max-w-[28.8rem] lg:min-h-[9rem] lg:min-w-[25.2rem] lg:max-h-[10.35rem] lg:max-w-[30.6rem]",
+    "h-auto w-auto object-contain object-left min-h-[7rem] min-w-[min(20.5rem,calc(100vw-4.5rem))] max-h-[9.3rem] max-w-[min(27.9rem,96vw)] sm:min-h-[7.4rem] sm:min-w-[22.25rem] sm:max-h-[8.85rem] sm:max-w-[27.9rem] md:min-h-[8.3rem] md:min-w-[24.15rem] md:max-h-[9.75rem] md:max-w-[29.7rem] lg:min-h-[9.3rem] lg:min-w-[26rem] lg:max-h-[10.7rem] lg:max-w-[31.5rem]",
 };
 
 type LogoProps = {
@@ -24,8 +24,8 @@ export const Logo = ({ className = "", variant = "header" }: LogoProps) => (
     <img
       src={logo}
       alt="Fluxen - Telemetria em Nuvem logo"
-      width={408}
-      height={480}
+      width={785}
+      height={809}
       className={`block bg-transparent ${variantClass[variant]}`}
     />
   </a>
