@@ -405,6 +405,26 @@ const ManageMetrics: React.FC<ManageMetricsProps> = ({ disabled = false }) => {
     };
   };
 
+  // Formata o payload com comentários (nome da métrica) só para visualização na UI
+  const formatPayloadForDisplay = () => {
+    const logEntries = associatedMetrics.map((metric) => {
+      const label = metric.unidade
+        ? `${metric.nome} (${metric.unidade})`
+        : metric.nome;
+      return [
+        "    {",
+        `      "id_equipamento": ${Number(id)},`,
+        `      "id_metrica": ${metric.id}, // ${label}`,
+        `      "valor": 0,`,
+        `      "valor_convertido": null,`,
+        `      "alarme": false`,
+        "    }",
+      ].join("\n");
+    });
+
+    return `{\n  "logs": [\n${logEntries.join(",\n")}\n  ]\n}`;
+  };
+
   // Função para copiar o JSON para a área de transferência
   const copyToClipboard = async () => {
     try {
@@ -890,6 +910,7 @@ const ManageMetrics: React.FC<ManageMetricsProps> = ({ disabled = false }) => {
             }}
           >
             Use este modelo JSON para enviar dados do equipamento. Substitua os valores de exemplo pelos valores reais dos sensores.
+            Os comentários ao lado de <strong>id_metrica</strong> são apenas para referência visual e não fazem parte do JSON enviado.
           </Typography>
 
           <Box
@@ -905,7 +926,7 @@ const ManageMetrics: React.FC<ManageMetricsProps> = ({ disabled = false }) => {
               whiteSpace: "pre-wrap"
             }}
           >
-            {JSON.stringify(generatePayload(), null, 2)}
+            {formatPayloadForDisplay()}
           </Box>
 
           <Box sx={{ mt: 2, p: 2, backgroundColor: "#e3f2fd", borderRadius: 1 }}>
