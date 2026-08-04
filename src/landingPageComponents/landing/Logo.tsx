@@ -7,7 +7,7 @@ const variantClass: Record<LogoVariant, string> = {
   header:
     "h-auto w-auto object-contain object-left min-h-[5.6rem] min-w-[min(18rem,calc(100vw-5.4rem))] max-h-[7.4rem] max-w-[min(23.4rem,calc(100vw-3.6rem))] sm:min-h-[6.1rem] sm:min-w-[18.5rem] sm:max-h-[6.5rem] sm:max-w-[24.3rem] md:min-h-[6.5rem] md:min-w-[19.6rem] md:max-h-[7.2rem] md:max-w-[25.2rem] lg:min-h-[7rem] lg:min-w-[20.5rem] lg:max-h-[7.4rem] lg:max-w-[26.1rem]",
   footer:
-    "h-auto w-auto object-contain object-left min-h-[7rem] min-w-[min(20.5rem,calc(100vw-4.5rem))] max-h-[9.3rem] max-w-[min(27.9rem,96vw)] sm:min-h-[7.4rem] sm:min-w-[22.25rem] sm:max-h-[8.85rem] sm:max-w-[27.9rem] md:min-h-[8.3rem] md:min-w-[24.15rem] md:max-h-[9.75rem] md:max-w-[29.7rem] lg:min-h-[9.3rem] lg:min-w-[26rem] lg:max-h-[10.7rem] lg:max-w-[31.5rem]",
+    "mx-auto h-auto w-auto object-contain object-center min-h-[4.2rem] min-w-[min(12.3rem,calc(100vw-4.5rem))] max-h-[5.6rem] max-w-[min(16.7rem,96vw)] sm:min-h-[4.4rem] sm:min-w-[13.4rem] sm:max-h-[5.3rem] sm:max-w-[16.7rem] md:min-h-[5rem] md:min-w-[14.5rem] md:max-h-[5.9rem] md:max-w-[17.8rem] lg:min-h-[5.6rem] lg:min-w-[15.6rem] lg:max-h-[6.4rem] lg:max-w-[18.9rem]",
 };
 
 type LogoProps = {
